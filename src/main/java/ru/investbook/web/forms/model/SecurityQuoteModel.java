@@ -29,6 +29,7 @@ import javax.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 import static java.time.ZoneId.systemDefault;
 import static org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME;
@@ -50,7 +51,7 @@ public class SecurityQuoteModel {
 
     @NotNull
     @DateTimeFormat(iso = DATE_TIME)
-    private Instant timestamp = LocalDate.now().atTime(12, 0).atZone(systemDefault()).toInstant();
+    private Instant timestamp = LocalDate.now().atTime(LocalTime.NOON).atZone(systemDefault()).toInstant();
 
     @NotNull
     @Positive
@@ -64,26 +65,22 @@ public class SecurityQuoteModel {
 
     private String currency;
 
-    public void setSecurity(String securityId, String securityName, SecurityType securityType) {
-        this.security = SecurityHelper.getSecurityDescription(securityId, securityName, securityType);
+    public void setSecurity(String isin, String securityName, SecurityType securityType) {
+        this.security = SecurityHelper.getSecurityDescription(isin, securityName, securityType);
         this.securityType = securityType;
     }
 
     /**
-     * Returns ISIN (stock market) or contract name (derivatives and forex market)
-     */
-    public String getSecurityId() {
-        return SecurityHelper.getSecurityId(security, securityType);
-    }
-
-    /**
-     * Returns security name (stock market) or null (derivatives and forex market)
+     * Returns Name from template "Name (ISIN)" for stock and bond, code for derivative, securityName for asset
      */
     public String getSecurityName() {
         return SecurityHelper.getSecurityName(security, securityType);
     }
 
-    public String getSecurityDisplayName() {
-        return SecurityHelper.getSecurityDisplayName(security, securityType);
+    /**
+     * Returns ISIN if description in "Name (ISIN)" format, null otherwise
+     */
+    public String getSecurityIsin() {
+        return SecurityHelper.getSecurityIsin(security);
     }
 }

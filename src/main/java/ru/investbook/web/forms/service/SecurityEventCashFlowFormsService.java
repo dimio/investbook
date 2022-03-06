@@ -27,12 +27,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.investbook.converter.PortfolioConverter;
 import ru.investbook.converter.SecurityEventCashFlowConverter;
+import ru.investbook.entity.SecurityEntity;
 import ru.investbook.entity.SecurityEventCashFlowEntity;
 import ru.investbook.repository.PortfolioRepository;
 import ru.investbook.repository.SecurityEventCashFlowRepository;
 import ru.investbook.web.forms.model.SecurityEventCashFlowModel;
 
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -72,10 +74,10 @@ public class SecurityEventCashFlowFormsService implements FormsService<SecurityE
     @Transactional
     public void save(SecurityEventCashFlowModel e) {
         saveAndFlush(e.getPortfolio());
-        String savedSecurityId = securityRepositoryHelper.saveAndFlushSecurity(e);
+        int savedSecurityId = securityRepositoryHelper.saveAndFlushSecurity(e);
         SecurityEventCashFlowBuilder builder = SecurityEventCashFlow.builder()
                 .portfolio(e.getPortfolio())
-                .timestamp(e.getDate().atStartOfDay(zoneId).toInstant())
+                .timestamp(e.getDate().atTime(e.getTime()).atZone(zoneId).toInstant())
                 .security(savedSecurityId)
                 .count(e.getCount());
         SecurityEventCashFlowEntity entity = securityEventCashFlowRepository.save(
@@ -114,13 +116,16 @@ public class SecurityEventCashFlowFormsService implements FormsService<SecurityE
         SecurityEventCashFlowModel m = new SecurityEventCashFlowModel();
         m.setId(e.getId());
         m.setPortfolio(e.getPortfolio().getId());
-        m.setDate(e.getTimestamp().atZone(zoneId).toLocalDate());
+        ZonedDateTime zonedDateTime = e.getTimestamp().atZone(zoneId);
+        m.setDate(zonedDateTime.toLocalDate());
+        m.setTime(zonedDateTime.toLocalTime());
         m.setCount(e.getCount());
         CashFlowType type = CashFlowType.valueOf(e.getCashFlowType().getId());
         m.setType(type);
+        SecurityEntity securityEntity = e.getSecurity();
         m.setSecurity(
-                ofNullable(e.getSecurity().getIsin()).orElse(e.getSecurity().getId()),
-                ofNullable(e.getSecurity().getName()).orElse(e.getSecurity().getTicker()),
+                securityEntity.getIsin(),
+                ofNullable(securityEntity.getName()).orElse(securityEntity.getTicker()),
                 m.getSecurityType());
         m.setValue(type == DERIVATIVE_PROFIT ? e.getValue() :  e.getValue().abs());
         m.setValueCurrency(e.getCurrency());
@@ -128,7 +133,7 @@ public class SecurityEventCashFlowFormsService implements FormsService<SecurityE
         if (m.getType() != CashFlowType.TAX) {
             securityEventCashFlowRepository.findByPortfolioIdAndSecurityIdAndCashFlowTypeIdAndTimestampAndCount(
                     m.getPortfolio(),
-                    m.getSecurityId(),
+                    securityEntity.getId(),
                     CashFlowType.TAX.getId(),
                     e.getTimestamp(),
                     m.getCount())

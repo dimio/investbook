@@ -27,25 +27,24 @@ import org.spacious_team.broker.pojo.Security;
 import org.spacious_team.broker.pojo.SecurityEventCashFlow;
 import org.spacious_team.broker.pojo.SecurityQuote;
 import org.spacious_team.broker.report_parser.api.AbstractReportTables;
-import org.spacious_team.broker.report_parser.api.DerivativeTransaction;
-import org.spacious_team.broker.report_parser.api.ForeignExchangeTransaction;
+import org.spacious_team.broker.report_parser.api.AbstractTransaction;
 import org.spacious_team.broker.report_parser.api.ReportTable;
 import org.spacious_team.broker.report_parser.api.WrappingReportTable;
+import ru.investbook.service.moex.MoexDerivativeCodeService;
 
 public class PsbReportTables extends AbstractReportTables<PsbBrokerReport> {
 
-    @Getter
     private final SecurityTransactionTable securityTransactionTable;
 
     @Getter
     private final ReportTable<Security> securitiesTable;
 
-    protected PsbReportTables(PsbBrokerReport report) {
+    protected PsbReportTables(PsbBrokerReport report, MoexDerivativeCodeService moexDerivativeCodeService) {
         super(report);
         this.securityTransactionTable = new SecurityTransactionTable(report);
         this.securitiesTable = WrappingReportTable.of(
                 new SecuritiesTable(report),
-                new DerivativesTable(report),
+                new DerivativesTable(report, moexDerivativeCodeService),
                 WrappingReportTable.of(report, securityTransactionTable.getSecurities()));
     }
 
@@ -55,7 +54,7 @@ public class PsbReportTables extends AbstractReportTables<PsbBrokerReport> {
     }
 
     @Override
-    public ReportTable<PortfolioCash> getCashTable() {
+    public ReportTable<PortfolioCash> getPortfolioCashTable() {
         return new CashTable(report);
     }
 
@@ -65,28 +64,18 @@ public class PsbReportTables extends AbstractReportTables<PsbBrokerReport> {
     }
 
     @Override
-    public ReportTable<DerivativeTransaction> getDerivativeTransactionTable() {
-        return new DerivativeTransactionTable(report);
+    public ReportTable<AbstractTransaction> getTransactionTable() {
+        return WrappingReportTable.of(
+                securityTransactionTable,
+                new DerivativeTransactionTable(report));
     }
 
     @Override
-    public ReportTable<ForeignExchangeTransaction> getForeignExchangeTransactionTable() {
-        return emptyTable();
-    }
-
-    @Override
-    public ReportTable<SecurityEventCashFlow> getCouponAmortizationRedemptionTable() {
-        return new CouponAmortizationRedemptionTable(report);
-    }
-    
-    @Override
-    public ReportTable<SecurityEventCashFlow> getDividendTable() {
-        return new DividendTable(report);
-    }
-    
-    @Override
-    public ReportTable<SecurityEventCashFlow> getDerivativeCashFlowTable() {
-        return new DerivativeCashFlowTable(report);
+    public ReportTable<SecurityEventCashFlow> getSecurityEventCashFlowTable() {
+        return WrappingReportTable.of(
+                new CouponAmortizationRedemptionTable(report),
+                new DividendTable(report),
+                new DerivativeCashFlowTable(report));
     }
 
     @Override

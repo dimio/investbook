@@ -32,38 +32,42 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public interface SecurityEventCashFlowRepository extends JpaRepository<SecurityEventCashFlowEntity, Integer> {
 
+    Optional<SecurityEventCashFlowEntity> findFirstByOrderByTimestampDesc();
+
     List<SecurityEventCashFlowEntity> findByPortfolioInOrderByPortfolioIdAscTimestampDescSecurityIdAsc(
             Collection<PortfolioEntity> portfolios);
 
+    List<SecurityEventCashFlowEntity> findByCashFlowTypeId(int type);
+
     Optional<SecurityEventCashFlowEntity> findByPortfolioIdAndSecurityIdAndCashFlowTypeIdAndTimestampAndCount(
             String portfolio,
-            String isin,
+            Integer securityId,
             int cashFlowType,
             Instant timestamp,
             int count);
 
     List<SecurityEventCashFlowEntity> findByPortfolioIdInAndSecurityIdAndCashFlowTypeIdAndTimestampBetweenOrderByTimestampAsc(
             Collection<String> portfolios,
-            String isin,
+            Integer securityId,
             int cashFlowType,
             Instant fromDate,
             Instant toDate);
 
     List<SecurityEventCashFlowEntity> findBySecurityIdAndCashFlowTypeIdAndTimestampBetweenOrderByTimestampAsc(
-            String isin,
+            Integer securityId,
             int cashFlowType,
             Instant fromDate,
             Instant toDate);
 
     List<SecurityEventCashFlowEntity> findByPortfolioIdInAndSecurityIdAndCashFlowTypeIdInAndTimestampBetweenOrderByTimestampAsc(
             Collection<String> portfolios,
-            String isin,
+            Integer securityId,
             Set<Integer> cashFlowType,
             Instant fromDate,
             Instant toDate);
 
     List<SecurityEventCashFlowEntity> findBySecurityIdAndCashFlowTypeIdInAndTimestampBetweenOrderByTimestampAsc(
-            String isin,
+            Integer securityId,
             Set<Integer> cashFlowType,
             Instant fromDate,
             Instant toDate);
@@ -82,7 +86,7 @@ public interface SecurityEventCashFlowRepository extends JpaRepository<SecurityE
      */
     Optional<SecurityEventCashFlowEntity> findFirstByPortfolioIdInAndSecurityIdAndCashFlowTypeIdInAndTimestampBetweenOrderByTimestampDesc(
             Collection<String> portfolio,
-            String isin,
+            Integer securityId,
             Set<Integer> cashFlowType,
             Instant fromDate,
             Instant toDate);
@@ -91,7 +95,7 @@ public interface SecurityEventCashFlowRepository extends JpaRepository<SecurityE
      * Return last security payment, between date-time interval
      */
     Optional<SecurityEventCashFlowEntity> findFirstBySecurityIdAndCashFlowTypeIdInAndTimestampBetweenOrderByTimestampDesc(
-            String isin,
+            Integer securityId,
             Set<Integer> cashFlowType,
             Instant fromDate,
             Instant toDate);

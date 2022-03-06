@@ -67,14 +67,14 @@ public class PortfolioPropertyRestController extends AbstractRestController<Inte
 
     @Override
     @PostMapping
-    @Operation(summary = "Добавить", description = "Добавить информацию о конкретном счете")
+    @Operation(summary = "Добавить", description = "Добавить информацию для конкретного счета")
     public ResponseEntity<Void> post(@Valid @RequestBody PortfolioProperty property) {
         return super.post(property);
     }
 
     @Override
     @PutMapping("{id}")
-    @Operation(summary = "Обновить", description = "Обновить информацию о счете")
+    @Operation(summary = "Обновить", description = "Обновить информацию для счета")
     public ResponseEntity<Void> put(@PathVariable("id")
                                     @Parameter(description = "Внутренний идентификатор записи")
                                             Integer id,

@@ -22,18 +22,16 @@ import lombok.RequiredArgsConstructor;
 import org.spacious_team.broker.pojo.Security;
 import org.springframework.stereotype.Component;
 import ru.investbook.entity.SecurityEntity;
-import ru.investbook.repository.IssuerRepository;
 
 @Component
 @RequiredArgsConstructor
 public class SecurityConverter implements EntityConverter<SecurityEntity, Security> {
 
-    private final IssuerRepository issuerRepository;
-
     @Override
     public SecurityEntity toEntity(Security security) {
         SecurityEntity entity = new SecurityEntity();
         entity.setId(security.getId());
+        entity.setType(security.getType());
         entity.setIsin(security.getIsin());
         entity.setTicker(security.getTicker());
         entity.setName(security.getName());
@@ -44,6 +42,7 @@ public class SecurityConverter implements EntityConverter<SecurityEntity, Securi
     public Security fromEntity(SecurityEntity entity) {
         return Security.builder()
                 .id(entity.getId())
+                .type(entity.getType())
                 .isin(entity.getIsin())
                 .ticker(entity.getTicker())
                 .name(entity.getName())

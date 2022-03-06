@@ -24,8 +24,7 @@ import org.spacious_team.broker.pojo.Security;
 import org.spacious_team.broker.pojo.SecurityEventCashFlow;
 import org.spacious_team.broker.pojo.SecurityQuote;
 import org.spacious_team.broker.report_parser.api.AbstractReportTables;
-import org.spacious_team.broker.report_parser.api.DerivativeTransaction;
-import org.spacious_team.broker.report_parser.api.ForeignExchangeTransaction;
+import org.spacious_team.broker.report_parser.api.AbstractTransaction;
 import org.spacious_team.broker.report_parser.api.ReportTable;
 import org.spacious_team.broker.report_parser.api.SecurityTransaction;
 import org.spacious_team.broker.report_parser.api.WrappingReportTable;
@@ -39,17 +38,14 @@ import java.util.stream.Collectors;
 public class UralsibReportTables extends AbstractReportTables<UralsibBrokerReport> {
 
     @Getter
-    private final CashTable cashTable;
+    private final CashTable portfolioCashTable;
     private final SecuritiesTable portfolioSecuritiesTable;
-    @Getter
     private final ReportTable<SecurityTransaction> securityTransactionTable;
     @Getter
     private final PortfolioPropertyTable portfolioPropertyTable;
     @Getter
     private final ForeignExchangeRateTable foreignExchangeRateTable;
-    @Getter
     private final CouponAmortizationRedemptionTable couponAmortizationRedemptionTable;
-    @Getter
     private final DividendTable dividendTable;
     @Getter
     private final ReportTable<SecurityQuote> securityQuoteTable;
@@ -57,9 +53,9 @@ public class UralsibReportTables extends AbstractReportTables<UralsibBrokerRepor
     public UralsibReportTables(UralsibBrokerReport report, ForeignExchangeRateService foreignExchangeRateService) {
         super(report);
         AssetsTable securityAssetsTable = new AssetsTable(report);
-        this.cashTable = new CashTable(report);
+        this.portfolioCashTable = new CashTable(report);
         this.foreignExchangeRateTable = new ForeignExchangeRateTable(report, foreignExchangeRateService);
-        this.portfolioPropertyTable = new PortfolioPropertyTable(securityAssetsTable, cashTable, foreignExchangeRateTable);
+        this.portfolioPropertyTable = new PortfolioPropertyTable(securityAssetsTable, portfolioCashTable, foreignExchangeRateTable);
         this.portfolioSecuritiesTable = new SecuritiesTable(report);
         this.securityTransactionTable = WrappingReportTable.of(
                 new SecurityTransactionTable(report, foreignExchangeRateTable),
@@ -78,31 +74,31 @@ public class UralsibReportTables extends AbstractReportTables<UralsibBrokerRepor
         data.addAll(new CashFlowTable(report).getData());
         data.addAll(couponAmortizationRedemptionTable.getEventCashFlows());
         data.addAll(dividendTable.getEventCashFlows());
-        return new WrappingReportTable<>(report, data);
+        return WrappingReportTable.of(report, data);
     }
 
     @Override
     public ReportTable<Security> getSecuritiesTable() {
-        return new WrappingReportTable<>(report, portfolioSecuritiesTable.getData()
+        return WrappingReportTable.of(report, portfolioSecuritiesTable.getData()
                 .stream()
                 .map(ReportSecurityInformation::getSecurity)
                 .collect(Collectors.toList()));
     }
 
     @Override
-    public ReportTable<DerivativeTransaction> getDerivativeTransactionTable() {
+    public ReportTable<AbstractTransaction> getTransactionTable() {
         return WrappingReportTable.of(
+                securityTransactionTable,
                 new DerivativeTransactionTable(report),
-                new DerivativeExpirationTable(report));
+                new DerivativeExpirationTable(report),
+                new ForeignExchangeTransactionTable(report));
     }
 
     @Override
-    public ReportTable<ForeignExchangeTransaction> getForeignExchangeTransactionTable() {
-        return new ForeignExchangeTransactionTable(report);
-    }
-
-    @Override
-    public ReportTable<SecurityEventCashFlow> getDerivativeCashFlowTable() {
-        return new DerivativeCashFlowTable(report);
+    public ReportTable<SecurityEventCashFlow> getSecurityEventCashFlowTable() {
+        return WrappingReportTable.of(
+                couponAmortizationRedemptionTable,
+                dividendTable,
+                new DerivativeCashFlowTable(report));
     }
 }

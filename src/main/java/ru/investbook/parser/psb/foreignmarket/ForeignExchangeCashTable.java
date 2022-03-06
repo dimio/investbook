@@ -47,7 +47,7 @@ public class ForeignExchangeCashTable extends SingleInitializableReportTable<Por
     @Override
     protected Collection<PortfolioCash> parseTable() {
         Table table = getSummaryTable();
-        TableRow row = table.findRow(ASSETS);
+        TableRow row = table.findRowByPrefix(ASSETS);
         if (row == null) {
             return emptyList();
         }
@@ -58,7 +58,7 @@ public class ForeignExchangeCashTable extends SingleInitializableReportTable<Por
                 cashes.add(PortfolioCash.builder()
                         .portfolio(getReport().getPortfolio())
                         .timestamp(getReport().getReportEndDateTime())
-                        .section("валютный рынок")
+                        .market("валютный рынок")
                         .value(cash)
                         .currency(currency.name())
                         .build());

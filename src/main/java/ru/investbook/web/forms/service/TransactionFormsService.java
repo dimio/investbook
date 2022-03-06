@@ -21,8 +21,6 @@ package ru.investbook.web.forms.service;
 import lombok.RequiredArgsConstructor;
 import org.spacious_team.broker.pojo.CashFlowType;
 import org.spacious_team.broker.pojo.Portfolio;
-import org.spacious_team.broker.pojo.Transaction;
-import org.spacious_team.broker.pojo.TransactionCashFlow;
 import org.spacious_team.broker.report_parser.api.AbstractTransaction;
 import org.spacious_team.broker.report_parser.api.AbstractTransaction.AbstractTransactionBuilder;
 import org.spacious_team.broker.report_parser.api.DerivativeTransaction;
@@ -30,22 +28,29 @@ import org.spacious_team.broker.report_parser.api.ForeignExchangeTransaction;
 import org.spacious_team.broker.report_parser.api.SecurityTransaction;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 import ru.investbook.converter.PortfolioConverter;
 import ru.investbook.converter.TransactionCashFlowConverter;
 import ru.investbook.converter.TransactionConverter;
 import ru.investbook.entity.PortfolioEntity;
+import ru.investbook.entity.SecurityEntity;
 import ru.investbook.entity.TransactionCashFlowEntity;
 import ru.investbook.entity.TransactionEntity;
+import ru.investbook.report.FifoPositions;
+import ru.investbook.report.FifoPositionsFactory;
+import ru.investbook.report.FifoPositionsFilter;
 import ru.investbook.repository.PortfolioRepository;
 import ru.investbook.repository.TransactionCashFlowRepository;
 import ru.investbook.repository.TransactionRepository;
 import ru.investbook.web.forms.model.SecurityType;
+import ru.investbook.web.forms.model.SplitModel;
 import ru.investbook.web.forms.model.TransactionModel;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.ZoneId;
-import java.util.Collection;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -54,7 +59,6 @@ import java.util.stream.Collectors;
 
 import static java.lang.Math.abs;
 import static java.util.Optional.ofNullable;
-import static org.spacious_team.broker.pojo.SecurityType.getSecurityType;
 import static ru.investbook.web.forms.model.SecurityType.DERIVATIVE;
 
 @Component
@@ -68,6 +72,7 @@ public class TransactionFormsService implements FormsService<TransactionModel> {
     private final TransactionConverter transactionConverter;
     private final PortfolioConverter portfolioConverter;
     private final SecurityRepositoryHelper securityRepositoryHelper;
+    private final FifoPositionsFactory fifoPositionsFactory;
     private final Set<Integer> cashFlowTypes = Set.of(CashFlowType.PRICE.getId(),
             CashFlowType.ACCRUED_INTEREST.getId(),
             CashFlowType.DERIVATIVE_QUOTE.getId(),
@@ -97,7 +102,7 @@ public class TransactionFormsService implements FormsService<TransactionModel> {
     @Override
     @Transactional
     public void save(TransactionModel tr) {
-        String savedSecurityId = securityRepositoryHelper.saveAndFlushSecurity(tr);
+        int savedSecurityId = securityRepositoryHelper.saveAndFlushSecurity(tr);
         int direction = ((tr.getAction() == TransactionModel.Action.BUY) ? 1 : -1);
         BigDecimal multiplier = BigDecimal.valueOf(-direction * tr.getCount());
 
@@ -145,26 +150,33 @@ public class TransactionFormsService implements FormsService<TransactionModel> {
                 .id(tr.getId())
                 .tradeId(tr.getTradeId())
                 .portfolio(tr.getPortfolio())
-                .timestamp(tr.getDate().atStartOfDay(zoneId).toInstant())
+                .timestamp(tr.getDate().atTime(tr.getTime()).atZone(zoneId).toInstant())
                 .security(savedSecurityId)
                 .count(abs(tr.getCount()) * direction)
                 .build();
 
-        saveAndFlush(tr, transaction.getTransaction(), transaction.getTransactionCashFlows());
+        saveAndFlush(tr.getPortfolio());
+        int transactionId = saveAndFlush(transaction);
+        tr.setId(transactionId); // used by view
     }
 
-    private void saveAndFlush(TransactionModel transactionModel,
-                              Transaction transaction,
-                              Collection<TransactionCashFlow> cashFlows) {
-        saveAndFlush(transactionModel.getPortfolio());
-        TransactionEntity transactionEntity = transactionRepository.saveAndFlush(transactionConverter.toEntity(transaction));
-        transactionModel.setId(transactionEntity.getId()); // used by view
+    /**
+     * @return saved transaction id
+     */
+    private int saveAndFlush(AbstractTransaction transaction) {
+        TransactionEntity transactionEntity = transactionRepository.saveAndFlush(
+                transactionConverter.toEntity(transaction.getTransaction()));
+
         Optional.ofNullable(transactionEntity.getId()).ifPresent(transactionCashFlowRepository::deleteByTransactionId);
         transactionCashFlowRepository.flush();
-        cashFlows.stream()
-                .map(cash -> cash.toBuilder().transactionId(transactionEntity.getId()).build())
+        transaction.toBuilder()
+                .id(transactionEntity.getId())
+                .build()
+                .getTransactionCashFlows()
+                .stream()
                 .map(transactionCashFlowConverter::toEntity)
                 .forEach(transactionCashFlowRepository::save);
+        return transactionEntity.getId();
     }
 
     private void saveAndFlush(String portfolio) {
@@ -176,6 +188,39 @@ public class TransactionFormsService implements FormsService<TransactionModel> {
         }
     }
 
+    public void save(SplitModel split) {
+        int savedSecurityId = securityRepositoryHelper.saveAndFlushSecurity(split);
+
+        Instant splitInstant = split.getDate().atTime(split.getTime()).atZone(zoneId).toInstant();
+        checkWithdrawalCount(split, savedSecurityId, splitInstant);
+
+        SecurityTransaction.SecurityTransactionBuilder<?, ?> builder = SecurityTransaction.builder()
+                .portfolio(split.getPortfolio())
+                .timestamp(splitInstant)
+                .security(savedSecurityId);
+
+        saveAndFlush(split.getPortfolio());
+        saveAndFlush(builder
+                .tradeId(split.getTradeId() + "w")
+                .count(-Math.abs(split.getWithdrawalCount()))
+                .build());
+        saveAndFlush(builder
+                .tradeId(split.getTradeId() + "d")
+                .count(Math.abs(split.getDepositCount()))
+                .build());
+    }
+
+    private void checkWithdrawalCount(SplitModel split, int savedSecurityId, Instant splitInstant) {
+        FifoPositions positions = fifoPositionsFactory.get(savedSecurityId,
+                org.spacious_team.broker.pojo.SecurityType.STOCK,
+                FifoPositionsFilter.of(split.getPortfolio(), Instant.EPOCH, splitInstant));
+        Assert.isTrue(positions.getCurrentOpenedPositionsCount() == Math.abs(split.getWithdrawalCount()),
+                () -> "На момент сплита " + split.getDate() + " в " + split.getTime() +
+                        " на счету '" + split.getPortfolio() + "' " +
+                        "находилось " + positions.getCurrentOpenedPositionsCount() + " акций " + split.getSecurity() +
+                        ", вы указали другое количество");
+    }
+
     private TransactionModel toTransactionModel(TransactionEntity e) {
         TransactionModel m = new TransactionModel();
         m.setId(e.getId());
@@ -184,8 +229,11 @@ public class TransactionFormsService implements FormsService<TransactionModel> {
         int count = e.getCount();
         BigDecimal cnt = BigDecimal.valueOf(count);
         m.setAction(count >= 0 ? TransactionModel.Action.BUY : TransactionModel.Action.CELL);
-        m.setDate(e.getTimestamp().atZone(zoneId).toLocalDate());
-        AtomicReference<SecurityType> securityType = new AtomicReference<>(SecurityType.valueOf(getSecurityType(e.getSecurity().getId())));
+        ZonedDateTime zonedDateTime = e.getTimestamp().atZone(zoneId);
+        m.setDate(zonedDateTime.toLocalDate());
+        m.setTime(zonedDateTime.toLocalTime());
+        SecurityEntity securityEntity = e.getSecurity();
+        AtomicReference<SecurityType> securityType = new AtomicReference<>(SecurityType.valueOf(securityEntity.getType()));
         m.setCount(abs(count));
         List<TransactionCashFlowEntity> cashFlows = transactionCashFlowRepository.findByTransactionIdAndCashFlowTypeIn(
                 e.getId(),
@@ -211,8 +259,8 @@ public class TransactionFormsService implements FormsService<TransactionModel> {
             }
         });
         m.setSecurity(
-                ofNullable(e.getSecurity().getIsin()).orElse(e.getSecurity().getId()),
-                ofNullable(e.getSecurity().getName()).orElse(e.getSecurity().getTicker()),
+                securityEntity.getIsin(),
+                ofNullable(securityEntity.getName()).orElse(securityEntity.getTicker()),
                 securityType.get());
         if (m.getSecurityType() == DERIVATIVE &&
                 m.getPrice() != null && m.getPrice().floatValue() > 0.000001) {

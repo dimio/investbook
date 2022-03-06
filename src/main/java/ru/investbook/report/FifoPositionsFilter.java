@@ -34,7 +34,11 @@ public interface FifoPositionsFilter {
     Instant getToDate();
 
     static FifoPositionsFilter of(Portfolio portfolio) {
-        Collection<String> portfolios = singleton(portfolio.getId());
+        return of(portfolio.getId());
+    }
+
+    static FifoPositionsFilter of(String portfolio) {
+        Collection<String> portfolios = singleton(portfolio);
         Instant toDate = Instant.now();
         return new FifoPositionsFilter() {
             public Collection<String> getPortfolios() {
@@ -71,8 +75,16 @@ public interface FifoPositionsFilter {
         };
     }
 
+    static FifoPositionsFilter of(Collection<String> portfolios) {
+        return of(portfolios, ViewFilter.defaultFromDate, Instant.now());
+    }
+
     static FifoPositionsFilter of(Portfolio portfolio, Instant from, Instant to) {
         return of(singleton(portfolio.getId()), from, to);
+    }
+
+    static FifoPositionsFilter of(String portfolio, Instant from, Instant to) {
+        return of(singleton(portfolio), from, to);
     }
 
     static FifoPositionsFilter of(Collection<String> portfolios, Instant from, Instant to) {

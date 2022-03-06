@@ -32,6 +32,8 @@ import ru.investbook.parser.SingleAbstractReportTable;
 import ru.investbook.parser.uralsib.SecuritiesTable.ReportSecurityInformation;
 
 import static ru.investbook.parser.uralsib.SecuritiesTable.SecuritiesTableHeader.*;
+import static ru.investbook.parser.uralsib.SecurityRegistryHelper.declareStockOrBond;
+import static ru.investbook.parser.uralsib.SecurityRegistryHelper.getStockOrBond;
 
 @Slf4j
 public class SecuritiesTable extends SingleAbstractReportTable<ReportSecurityInformation> {
@@ -44,12 +46,12 @@ public class SecuritiesTable extends SingleAbstractReportTable<ReportSecurityInf
 
     @Override
     protected ReportSecurityInformation parseRow(TableRow row) {
-        Security security = Security.builder()
-                .id(row.getStringCellValue(ISIN))
-                .name(row.getStringCellValue(NAME))
-                .build();
+        String isin = row.getStringCellValue(ISIN);
+        String name = row.getStringCellValue(NAME);
+        Security security = getStockOrBond(isin, name);
+        int securityId = declareStockOrBond(security, getReport().getSecurityRegistrar());
         return ReportSecurityInformation.builder()
-                .security(security)
+                .security(security.toBuilder().id(securityId).build())
                 .cfi(row.getStringCellValue(CFI))
                 .incomingCount(row.getIntCellValue(INCOMING_COUNT))
                 .build();
@@ -67,6 +69,7 @@ public class SecuritiesTable extends SingleAbstractReportTable<ReportSecurityInf
 
         @Getter
         private final TableColumn column;
+
         SecuritiesTableHeader(String... words) {
             this.column = TableColumnImpl.of(words);
         }

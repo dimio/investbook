@@ -33,6 +33,7 @@ import static java.math.RoundingMode.HALF_UP;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static ru.investbook.parser.uralsib.SecuritiesTable.SecuritiesTableHeader.*;
+import static ru.investbook.parser.uralsib.SecurityRegistryHelper.declareStockOrBond;
 import static ru.investbook.report.ForeignExchangeRateService.RUB;
 
 public class SecurityQuoteTable extends SingleAbstractReportTable<SecurityQuote> {
@@ -68,8 +69,10 @@ public class SecurityQuoteTable extends SingleAbstractReportTable<SecurityQuote>
                 .orElseThrow(() -> new IllegalArgumentException("Не смогли вычислить валюту облигации " + isin + ", " +
                         "цена и НКД могут быть в разных валютах"));
 
+        int securityId = declareStockOrBond(isin, row.getStringCellValue(NAME), getReport().getSecurityRegistrar());
+
         return builder
-                .security(isin)
+                .security(securityId)
                 .timestamp(getReport().getReportEndDateTime())
                 .build();
     }

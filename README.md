@@ -1,14 +1,15 @@
 ![java-version](https://img.shields.io/badge/Java-17-brightgreen?style=flat-square)
-![spring-boot-version](https://img.shields.io/badge/SpringBoot-2.6.1-brightgreen?style=flat-square)
+![spring-boot-version](https://img.shields.io/badge/SpringBoot-2.6.3-brightgreen?style=flat-square)
 
 <img src="https://user-images.githubusercontent.com/11336712/85948992-b1d6de00-b95c-11ea-8edc-4d5e7dfc8210.png" width="100%"/>
 
 #### Оглавление
 - [Назначение](#назначение)
+- [Отличие от аналогов](#отличие-от-аналогов)
+- [Брокеры](#брокеры)
 - [Установка](#установка)
 - [Работа с приложением](#работа-с-приложением)
 - [Обновление приложения](#обновление-приложения)
-- [Брокеры](#брокеры)  
 - [Документация](#документация)
 - [Лицензия](#лицензия)
 - [Почему код приложения открыт](#почему-код-приложения-открыт)
@@ -42,10 +43,10 @@
   в сравнении с S&P 500, история инвестиций и остатка денежных средств;  
   ![portfolio-analysis](https://user-images.githubusercontent.com/11336712/102415874-fd17a280-4009-11eb-9bff-232975adf21b.png)
   <img src="https://user-images.githubusercontent.com/11336712/102416414-d4dc7380-400a-11eb-95b1-8ff8ae37bd17.png" width="32%"/>
-  <img src="https://user-images.githubusercontent.com/11336712/102415878-fee16600-4009-11eb-87c5-ed4ac6629941.png" width="32%"/>
+  <img src="https://user-images.githubusercontent.com/11336712/149419132-cad11fc3-fdaa-4572-882b-4ed49b937afe.png" width="32%"/>
   <img src="https://user-images.githubusercontent.com/11336712/102419341-9a75d500-4010-11eb-817a-a9b322237dd2.png" width="32%"/>
 - [портфель](src/main/asciidoc/portfolio-status.adoc) ценных бумаг с информацией о текущей позиции, усредненной цене
-  покупок и доходности ценных бумаг с учетом хеджирующих позиций на срочном рынке и усредненной цены покупки валюты;  
+  покупок и доходности ценных бумаг (ЧИСТВНДОХ/XIRR) с учетом хеджирующих позиций на срочном рынке и усредненной цены покупки валюты;  
   ![portfolio](https://user-images.githubusercontent.com/11336712/104820094-af2dce80-5843-11eb-8083-6521ea537334.png)
 - доля ценной бумаги в [портфеле](src/main/asciidoc/portfolio-status.adoc);  
   ![current-proportion](https://user-images.githubusercontent.com/11336712/88717010-8cd6b600-d128-11ea-901f-2b3fcee96f07.png)
@@ -59,7 +60,7 @@
 - детализация дивидендных, купонных и амортизационных [выплат](src/main/asciidoc/foreign-portfolio-payment.adoc),
   начисленные по акциям и облигациям со связанного счета ИИС;  
   ![foreign-portfolio-payment](https://user-images.githubusercontent.com/11336712/87988115-7907d000-cae8-11ea-9ec7-d56a120aac89.png)
-- доходность сделок на [фондовом](src/main/asciidoc/stock-market-profit.adoc) рынке;  
+- доходность сделок на [фондовом](src/main/asciidoc/stock-market-profit.adoc) рынке (метод FIFO);  
   ![stock-market](https://user-images.githubusercontent.com/11336712/78156498-8de02b00-7447-11ea-833c-cfc755bd7558.png)
 - доходность сделок на [срочном](src/main/asciidoc/derivatives-market-profit.adoc) рынке;  
   ![derivatives-market](https://user-images.githubusercontent.com/11336712/78156504-8f115800-7447-11ea-87e5-3cd4c34aab47.png)
@@ -67,13 +68,40 @@
   ![foreign-market](https://user-images.githubusercontent.com/11336712/84881751-fa59e600-b096-11ea-8b83-19d1c1229d73.png)
 - [ввод и вывод](src/main/asciidoc/securities-deposit-and-withdrawal.adoc) ценных бумаг с/на другие счета, конвертация, сплит акций (AAPL, TSLA и др.);  
   <img src="https://user-images.githubusercontent.com/11336712/87883425-f3185600-ca0f-11ea-9677-4689aa6a4ee5.png" width="40%"/>
-- [доходность](src/main/asciidoc/cash-flow.adoc) портфеля, пополнения, списания, переводы с/на другие счета, текущий остаток денежных средств;  
+- [доходность](src/main/asciidoc/cash-flow.adoc) портфеля (ЧИСТВНДОХ/XIRR), пополнения, списания, переводы с/на другие счета, текущий остаток денежных средств;  
   ![cash-in](https://user-images.githubusercontent.com/11336712/100395491-3172f100-3052-11eb-9652-cd5730ac2e6f.png)
 - [налоговая](src/main/asciidoc/tax.adoc) нагрузка, в том числе
   [обязательства](src/main/asciidoc/stock-market-profit.adoc#tax-liability) самостоятельной уплаты налога для иностранных бумаг;  
   ![tax](https://user-images.githubusercontent.com/11336712/96353102-b83ac280-10d1-11eb-9024-b0de4f4b153e.png)
 - [комиссия](src/main/asciidoc/commission.adoc) брокера.  
   <img src="https://user-images.githubusercontent.com/11336712/92284436-a1b61e80-ef0a-11ea-9eed-9a948089bcff.png" width="65%"/>
+
+### Отличие от аналогов
+Investbook в сравнении с [Intelinvest](https://intelinvest.ru) и [Snowball Income](https://snowball-income.com)
+имеет следующие преимущества:
+
+1. Отсутствие ежемесячной подписки. Бесплатно. Всегда и безусловно.
+1. Дивидендные, купонные, налоговые выплаты учитываются по факту поступления. Это позволяет точно рассчитывать 
+   доходность, вовремя отследить задержку поступлений выплат на счёт.
+1. Высокая точность оценки стоимости портфеля и налоговых обязательств. В отличие от аналогов суммы и даты поступления 
+   выплат, указанные в приложении, можно напрямую использоваться для составления декларации 3-НДФЛ. 
+1. Не требуется выход в сеть, возможность работать в свободное время в поездках без интернета.
+1. Безопасность. Не требуется выгружать отчёты брокера в облако, не требуется предоставлять токен доступа 
+   к брокерскому счету третьим лицам и программному обеспечению с потенциальными ошибками. Например, известно,
+   что токены популярного брокера позволяют совершать сделки без вашего участия.
+1. Открытый код - дополнительная гарантия безопасности и уверенности в доступности данных только вам.
+1. Понятный, широко распространенный формат отчёта - Excel таблицы с детальным описанием каждой колонки.
+1. Единый формат представления данных "[Portfolio Open Format](https://github.com/spacious-team/portfolio-open-format)"
+   при необходимости позволит безболезненно перенести накопленные данные в другое приложение учета инвестиций.
+
+### Брокеры
+Приложение анализирует отчеты брокеров Сбербанк (xlsx), ВТБ (xls), Промсвязьбанк (xlsx, xml) и Уралсиб (zip с xls).
+В ближайшее время будет поддерживать Тинькофф, БКС и Финам. Если ваш счет открыт у другого брокера, напишите
+[нам](https://t.me/investbook_support). Также вы можете уже на вашей версии приложения воспользоваться
+[формами](src/main/asciidoc/investbook-forms.adoc) ввода информации или
+[загрузить](src/main/asciidoc/investbook-input-format.adoc) данные из excel файла. Также поддержку вашего брокера могут 
+предложить сторонние разработчики через функционал расширений. Инструкция для установки расширений доступна для
+операционных систем [windows](docs/install-on-windows.md), [mac](docs/install-on-linux.md) и [linux](docs/install-on-linux.md).
 
 ### Установка
 Скачать со страницы [проекта](https://github.com/spacious-team/investbook/releases/latest) установщик `.msi`
@@ -99,14 +127,6 @@
 Процесс обновления на Windows не отличается от процесса первоначальной установки.
 Воспользуйтесь инструкцией для операционных систем [windows](docs/install-on-windows.md), [mac](docs/install-on-linux.md)
 и [linux](docs/install-on-linux.md).
-
-### Брокеры
-Приложение анализирует отчеты брокеров ВТБ (xls), Сбербанк (xlsx), Промсвязьбанк (xlsx, xml) и Уралсиб (zip с xls).
-В ближайшее время будет поддерживать Тинькофф, БКС и Финам. Если ваш счет открыт у другого брокера, напишите
-[нам](https://t.me/investbook_support) или воспользуйтесь [формами](src/main/asciidoc/investbook-forms.adoc)
-ввода информации уже на вашей версии приложения. Также поддержку вашего брокера могут предложить сторонние разработчики
-через функционал расширений. Инструкция для установки расширений доступна для операционных систем
-[windows](docs/install-on-windows.md), [mac](docs/install-on-linux.md) и [linux](docs/install-on-linux.md).
 
 ### Документация
 Дополнительная информация может быть найдена в [документации](docs/documentation.md), также оффлайн документация всегда

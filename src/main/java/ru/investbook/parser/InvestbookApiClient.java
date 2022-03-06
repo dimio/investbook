@@ -25,10 +25,11 @@ import org.spacious_team.broker.pojo.ForeignExchangeRate;
 import org.spacious_team.broker.pojo.Portfolio;
 import org.spacious_team.broker.pojo.PortfolioCash;
 import org.spacious_team.broker.pojo.PortfolioProperty;
-import org.spacious_team.broker.pojo.PortfolioPropertyType;
 import org.spacious_team.broker.pojo.Security;
+import org.spacious_team.broker.pojo.SecurityDescription;
 import org.spacious_team.broker.pojo.SecurityEventCashFlow;
 import org.spacious_team.broker.pojo.SecurityQuote;
+import org.spacious_team.broker.pojo.SecurityType;
 import org.spacious_team.broker.pojo.Transaction;
 import org.spacious_team.broker.pojo.TransactionCashFlow;
 import org.spacious_team.broker.report_parser.api.AbstractTransaction;
@@ -37,8 +38,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import ru.investbook.api.EventCashFlowRestController;
 import ru.investbook.api.ForeignExchangeRateRestController;
+import ru.investbook.api.PortfolioCashRestController;
 import ru.investbook.api.PortfolioPropertyRestController;
 import ru.investbook.api.PortfolioRestController;
+import ru.investbook.api.SecurityDescriptionRestController;
 import ru.investbook.api.SecurityEventCashFlowRestController;
 import ru.investbook.api.SecurityQuoteRestController;
 import ru.investbook.api.SecurityRestController;
@@ -46,18 +49,11 @@ import ru.investbook.api.TransactionCashFlowRestController;
 import ru.investbook.api.TransactionRestController;
 import ru.investbook.service.moex.MoexDerivativeCodeService;
 
-import java.time.Instant;
-import java.util.AbstractMap.SimpleEntry;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
+import javax.validation.ConstraintViolationException;
 import java.util.Optional;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toList;
+import static org.spacious_team.broker.pojo.CashFlowType.DERIVATIVE_PROFIT;
 import static ru.investbook.repository.RepositoryHelper.isUniqIndexViolationException;
 
 @Component
@@ -66,62 +62,57 @@ import static ru.investbook.repository.RepositoryHelper.isUniqIndexViolationExce
 public class InvestbookApiClient {
     private final PortfolioRestController portfolioRestController;
     private final SecurityRestController securityRestController;
+    private final SecurityDescriptionRestController securityDescriptionRestController;
     private final SecurityEventCashFlowRestController securityEventCashFlowRestController;
     private final EventCashFlowRestController eventCashFlowRestController;
     private final TransactionRestController transactionRestController;
     private final TransactionCashFlowRestController transactionCashFlowRestController;
     private final PortfolioPropertyRestController portfolioPropertyRestController;
+    private final PortfolioCashRestController portfolioCashRestController;
     private final SecurityQuoteRestController securityQuoteRestController;
     private final ForeignExchangeRateRestController foreignExchangeRateRestController;
     private final MoexDerivativeCodeService moexDerivativeCodeService;
+    private final ValidatorService validator;
 
     public boolean addPortfolio(Portfolio portfolio) {
         return handlePost(
-                () -> portfolioRestController.post(portfolio),
-                "Не могу сохранить Портфель " + portfolio);
+                portfolio,
+                portfolioRestController::post,
+                "Не могу сохранить Портфель");
     }
 
-    public boolean addSecurity(String security) {
-        return addSecurity(security, null);
-    }
-
-    public boolean addSecurity(String security, String name) {
-        return addSecurity(Security.builder()
-                .id(security)
-                .name(name)
-                .build());
-    }
-
-    public boolean addSecurity(Security security) {
-        Security _security = convertDerivativeSecurityId(security);
-        return handlePost(
-                () -> securityRestController.post(_security),
-                "Не могу добавить ЦБ " + security + " в список");
+    public void addSecurity(Security security) {
+        security = convertDerivativeSecurityId(security);
+        handlePost(
+                security,
+                securityRestController::post,
+                "Не могу добавить ЦБ ");
     }
 
     private Security convertDerivativeSecurityId(Security security) {
-        String id = security.getId();
-        String newId = moexDerivativeCodeService.convertDerivativeSecurityId(id);
-        if (!Objects.equals(id, newId)) {
-            security = security.toBuilder()
-                    .id(newId)
-                    .build();
-        }
-        return security;
+        return security.getType() == SecurityType.DERIVATIVE ?
+                security.toBuilder()
+                        .ticker(moexDerivativeCodeService.convertDerivativeCode(security.getTicker()))
+                        .build() :
+                security;
+    }
+
+    public void addSecurityDescription(SecurityDescription securityDescription) {
+        handlePost(
+                securityDescription,
+                securityDescriptionRestController::post,
+                "Не могу добавить метаинформацию о ЦБ ");
     }
 
     public void addTransaction(AbstractTransaction transaction) {
-        addSecurity(transaction.getSecurity());
         boolean isAdded = addTransaction(transaction.getTransaction());
         if (isAdded) {
-            Integer transactionId = Optional.ofNullable(transaction.getId())
+            Optional.ofNullable(transaction.getId())
                     .or(() -> getSavedTransactionId(transaction))
-                    .orElse(null);
-            if (transactionId == null) {
-                log.warn("Не могу добавить транзакцию в БД, не задан внутренний идентификатор записи: {}", transaction);
-                return;
-            }
-            addCashTransactionFlows(transaction, transactionId);
+                    .ifPresentOrElse(
+                            transactionId -> addCashTransactionFlows(transaction, transactionId),
+                            () -> log.warn("Не могу добавить транзакцию в БД, " +
+                                    "не задан внутренний идентификатор записи: {}", transaction));
         }
     }
 
@@ -133,94 +124,93 @@ public class InvestbookApiClient {
     }
 
     private void addCashTransactionFlows(AbstractTransaction transaction, int transactionId) {
-        transaction.getTransactionCashFlows()
-                .stream()
-                .map(cash -> cash.toBuilder().transactionId(transactionId).build())
+        transaction.toBuilder()
+                .id(transactionId)
+                .build()
+                .getTransactionCashFlows()
                 .forEach(this::addTransactionCashFlow);
     }
 
-    protected boolean addTransaction(Transaction transaction) {
+    public boolean addTransaction(Transaction transaction) {
         return handlePost(
-                () -> transactionRestController.post(transaction),
-                "Не могу добавить транзакцию " + transaction);
+                transaction,
+                transactionRestController::post,
+                "Не могу добавить транзакцию");
     }
 
     public void addTransactionCashFlow(TransactionCashFlow transactionCashFlow) {
         handlePost(
-                () -> transactionCashFlowRestController.post(transactionCashFlow),
-                "Не могу добавить информацию о передвижении средств " + transactionCashFlow);
+                transactionCashFlow,
+                transactionCashFlowRestController::post,
+                "Не могу добавить информацию о передвижении средств");
     }
 
     public void addEventCashFlow(EventCashFlow eventCashFlow) {
         handlePost(
-                () -> eventCashFlowRestController.post(eventCashFlow),
-                "Не могу добавить информацию о движении денежных средств " + eventCashFlow);
+                eventCashFlow,
+                eventCashFlowRestController::post,
+                "Не могу добавить информацию о движении денежных средств");
     }
 
-    public void addSecurityEventCashFlow(SecurityEventCashFlow securityEventCashFlow) {
-        handlePost(
-                () -> securityEventCashFlowRestController.post(securityEventCashFlow),
-                "Не могу добавить информацию о движении денежных средств " + securityEventCashFlow);
-    }
-
-    // TODO replace by storing to new 'portfolio_cash' table
-    @Deprecated
-    public void addPortfolioCash(Collection<PortfolioCash> cash) {
-        try {
-            Map<Entry<String, Instant>, List<PortfolioCash>> groupedCash = cash.stream()
-                    .collect(
-                            groupingBy(
-                                    v -> new SimpleEntry<>(v.getPortfolio(), v.getTimestamp()),
-                                    toList()));
-            groupedCash.entrySet()
-                    .stream()
-                    .map(e -> PortfolioProperty.builder()
-                            .portfolio(e.getKey().getKey())
-                            .timestamp(e.getKey().getValue())
-                            .property(PortfolioPropertyType.CASH)
-                            .value(PortfolioCash.serialize(e.getValue()))
-                            .build())
-                    .forEach(this::addPortfolioProperty);
-        } catch (Exception e) {
-            log.warn("Не могу добавить информацию о наличных средствах {}", cash, e);
+    public void addSecurityEventCashFlow(SecurityEventCashFlow cf) {
+        if (cf.getCount() == null && cf.getEventType() == DERIVATIVE_PROFIT) {
+            cf = cf.toBuilder().count(0).build(); // count is optional for derivatives
         }
+        handlePost(
+                cf,
+                securityEventCashFlowRestController::post,
+                "Не могу добавить информацию о движении денежных средств");
+    }
+
+    public void addPortfolioCash(PortfolioCash cash) {
+        handlePost(
+                cash,
+                portfolioCashRestController::post,
+                "Не могу добавить информацию об остатках денежных средств портфеля");
     }
 
     public void addPortfolioProperty(PortfolioProperty property) {
         handlePost(
-                () -> portfolioPropertyRestController.post(property),
-                "Не могу добавить информацию о свойствах портфеля " + property);
+                property,
+                portfolioPropertyRestController::post,
+                "Не могу добавить информацию о свойствах портфеля");
     }
 
     public void addSecurityQuote(SecurityQuote securityQuote) {
         handlePost(
-                () -> securityQuoteRestController.post(securityQuote),
-                "Не могу добавить информацию о котировке финансового инструмента " + securityQuote);
+                securityQuote,
+                securityQuoteRestController::post,
+                "Не могу добавить информацию о котировке финансового инструмента");
     }
 
     public void addForeignExchangeRate(ForeignExchangeRate exchangeRate) {
         handlePost(
-                () -> foreignExchangeRateRestController.post(exchangeRate),
-                "Не могу добавить информацию о курсе валюты " + exchangeRate);
+                exchangeRate,
+                foreignExchangeRateRestController::post,
+                "Не могу добавить информацию о курсе валюты");
     }
 
     /**
      * @return true if new row was added or it was already exists in DB, false - or error
      */
-    private boolean handlePost(Supplier<ResponseEntity<?>> postAction, String error) {
+    private <T> boolean handlePost(T object, Function<T, ResponseEntity<?>> saver, String errorPrefix) {
         try {
-            HttpStatus status = postAction.get().getStatusCode();
+            validator.validate(object);
+            HttpStatus status = saver.apply(object).getStatusCode();
             if (!status.is2xxSuccessful() && status != HttpStatus.CONFLICT) {
-                log.warn(error);
+                log.warn(errorPrefix + " " + object);
                 return false;
             }
+        } catch (ConstraintViolationException e) {
+            log.warn("{} {}: {}", errorPrefix, object, e.getMessage());
+            return false;
         } catch (Exception e) {
             if (isUniqIndexViolationException(e)) {
-                log.debug("Дублирование информации: {}", error);
+                log.debug("Дублирование информации: {} {}", errorPrefix, object);
                 log.trace("Дублирование вызвано исключением", e);
                 return true; // same as above status == HttpStatus.CONFLICT
             } else {
-                log.warn(error, e);
+                log.warn("{} {}", errorPrefix, object, e);
                 return false;
             }
         }

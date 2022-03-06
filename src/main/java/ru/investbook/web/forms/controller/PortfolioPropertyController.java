@@ -28,7 +28,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.investbook.repository.PortfolioRepository;
 import ru.investbook.web.ControllerHelper;
-import ru.investbook.web.forms.model.PortfolioPropertyCashModel;
 import ru.investbook.web.forms.model.PortfolioPropertyModel;
 import ru.investbook.web.forms.model.PortfolioPropertyTotalAssetsModel;
 import ru.investbook.web.forms.service.PortfolioPropertyFormsService;
@@ -58,28 +57,13 @@ public class PortfolioPropertyController {
         return "portfolio-properties/table";
     }
 
-    @GetMapping("/edit-form/cash")
-    public String getCashEditForm(@RequestParam(name = "id", required = false) Integer id, Model model) {
-        PortfolioPropertyModel property = getPortfolioProperty(id, PortfolioPropertyCashModel::new);
-        return getEditForm(model, property);
-    }
-
     @GetMapping("/edit-form/total-assets")
     public String getTotalAssetsEditForm(@RequestParam(name = "id", required = false) Integer id, Model model) {
-        PortfolioPropertyModel property = getPortfolioProperty(id, PortfolioPropertyTotalAssetsModel::new);
-        return getEditForm(model, property);
-    }
-
-    private String getEditForm(Model model, PortfolioPropertyModel property) {
+        PortfolioPropertyTotalAssetsModel property = (PortfolioPropertyTotalAssetsModel)
+                getPortfolioProperty(id, PortfolioPropertyTotalAssetsModel::new);
         model.addAttribute("property", property);
         model.addAttribute("portfolios", portfolios);
-        if (property instanceof PortfolioPropertyCashModel) {
-            return "portfolio-properties/cash-edit-form";
-        } else if (property instanceof PortfolioPropertyTotalAssetsModel) {
-            return "portfolio-properties/total-assets-edit-form";
-        } else {
-            throw new IllegalArgumentException("Unexpected type " + property.getClass());
-        }
+        return "portfolio-properties/total-assets-edit-form";
     }
 
     private PortfolioPropertyModel getPortfolioProperty(Integer id,
@@ -94,22 +78,11 @@ public class PortfolioPropertyController {
         }
     }
 
-    @PostMapping("/cash")
-    public String postCash(@Valid @ModelAttribute("property") PortfolioPropertyCashModel property) {
-        return postPortfolioProperty(property);
-    }
-
     @PostMapping("/total-assets")
     public String postCash(@Valid @ModelAttribute("property") PortfolioPropertyTotalAssetsModel property) {
-        return postPortfolioProperty(property);
-    }
-
-    private String postPortfolioProperty(PortfolioPropertyModel property) {
         selectedPortfolio = property.getPortfolio();
         portfolioPropertyFormsService.save(property);
-        return (property.getClass() == PortfolioPropertyCashModel.class) ?
-            "portfolio-properties/cash-view-single" :
-            "portfolio-properties/total-assets-view-single";
+        return "portfolio-properties/total-assets-view-single";
     }
 
     @GetMapping("/delete")

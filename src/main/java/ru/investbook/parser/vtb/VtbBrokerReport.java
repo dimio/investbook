@@ -24,6 +24,7 @@ import org.spacious_team.table_wrapper.api.ReportPage;
 import org.spacious_team.table_wrapper.api.TableCellAddress;
 import org.spacious_team.table_wrapper.excel.ExcelSheet;
 import ru.investbook.parser.AbstractExcelBrokerReport;
+import ru.investbook.parser.SecurityRegistrar;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,7 +44,8 @@ public class VtbBrokerReport extends AbstractExcelBrokerReport {
 
     private final Workbook book;
 
-    public VtbBrokerReport(String excelFileName, InputStream is) {
+    public VtbBrokerReport(String excelFileName, InputStream is, SecurityRegistrar securityRegistrar) {
+        super(securityRegistrar);
         this.book = getWorkBook(excelFileName, is);
         ReportPage reportPage = new ExcelSheet(book.getSheetAt(0));
         Path path = Paths.get(excelFileName);
@@ -55,7 +57,7 @@ public class VtbBrokerReport extends AbstractExcelBrokerReport {
     }
 
     private static void checkReportFormat(Path path, ReportPage reportPage) {
-        if (reportPage.find(UNIQ_TEXT, 1, 2) == TableCellAddress.NOT_FOUND) {
+        if (reportPage.findByPrefix(UNIQ_TEXT, 1, 2) == TableCellAddress.NOT_FOUND) {
             throw new RuntimeException("В файле " + path + " не содержится отчет брокера ВТБ");
         }
     }
@@ -78,7 +80,7 @@ public class VtbBrokerReport extends AbstractExcelBrokerReport {
 
     private Instant getReportEndDateTime(ReportPage reportPage) {
         try {
-            TableCellAddress address = reportPage.find(REPORT_DATE_MARKER, 1, 2);
+            TableCellAddress address = reportPage.findByPrefix(REPORT_DATE_MARKER, 1, 2);
             String value = reportPage.getCell(address)
                     .getStringValue()
                     .split(" ")[9];

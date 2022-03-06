@@ -33,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Data
 public class TransactionModel {
@@ -62,6 +63,10 @@ public class TransactionModel {
     @NotNull
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     private LocalDate date = LocalDate.now();
+
+    @NotNull
+    @DateTimeFormat(pattern = "HH:mm:ss")
+    private LocalTime time = LocalTime.NOON;
 
     /**
      * In "name (isin)" or "contract-name" format
@@ -132,27 +137,23 @@ public class TransactionModel {
         this.commissionCurrency = commissionCurrency.toUpperCase();
     }
 
-    public void setSecurity(String securityId, String securityName, SecurityType securityType) {
-        this.security = SecurityHelper.getSecurityDescription(securityId, securityName, securityType);
+    public void setSecurity(String isin, String securityName, SecurityType securityType) {
+        this.security = SecurityHelper.getSecurityDescription(isin, securityName, securityType);
         this.securityType = securityType;
     }
 
-    public String getSecurityDisplayName() {
-        return SecurityHelper.getSecurityDisplayName(security, securityType);
-    }
-
     /**
-     * Returns ISIN (stock market) or contract name (derivatives and forex market)
-     */
-    public String getSecurityId() {
-        return SecurityHelper.getSecurityId(security, securityType);
-    }
-
-    /**
-     * Returns security name (stock market) or null (derivatives and forex market)
+     * Returns Name from template "Name (ISIN)" for stock and bond, code for derivative, securityName for asset
      */
     public String getSecurityName() {
         return SecurityHelper.getSecurityName(security, securityType);
+    }
+
+    /**
+     * Returns ISIN if description in "Name (ISIN)" format, null otherwise
+     */
+    public String getSecurityIsin() {
+        return SecurityHelper.getSecurityIsin(security);
     }
 
     public String getTradeId() {

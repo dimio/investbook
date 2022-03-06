@@ -20,26 +20,39 @@ package ru.investbook.web.forms.model;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.lang.Nullable;
 
+import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Data
-@EqualsAndHashCode(callSuper = true)
-public class PortfolioPropertyCashModel extends PortfolioPropertyModel {
+@EqualsAndHashCode
+public class PortfolioCashModel {
+
+    @Nullable
+    private Integer id;
+
+    @NotEmpty
+    private String portfolio;
+
+    @Nullable
+    private String market;
 
     @NotNull
-    private BigDecimal cashRub = BigDecimal.ZERO;
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
+    private LocalDate date = LocalDate.now();
 
     @NotNull
-    private BigDecimal cashUsd = BigDecimal.ZERO;
+    @DateTimeFormat(pattern = "HH:mm:ss")
+    private LocalTime time = LocalTime.NOON;
 
     @NotNull
-    private BigDecimal cashEur = BigDecimal.ZERO;
+    private BigDecimal cash = BigDecimal.ZERO;
 
     @NotNull
-    private BigDecimal cashGbp = BigDecimal.ZERO;
-
-    @NotNull
-    private BigDecimal cashChf = BigDecimal.ZERO;
+    private String currency = "RUB";
 }

@@ -20,6 +20,7 @@ package ru.investbook.parser.uralsib;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.spacious_team.broker.pojo.Security;
 import org.spacious_team.broker.report_parser.api.SecurityTransaction;
 import org.spacious_team.table_wrapper.api.MultiLineTableColumn;
 import org.spacious_team.table_wrapper.api.RelativePositionTableColumn;
@@ -33,6 +34,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 
+import static ru.investbook.parser.uralsib.SecurityRegistryHelper.declareStockOrBond;
 import static ru.investbook.parser.uralsib.SecurityTransactionTable.TransactionTableHeader.*;
 
 @Slf4j
@@ -94,7 +96,7 @@ public class SecurityTransactionTable extends SingleAbstractReportTable<Security
                     commissionCurrency = brokerCommissionCurrency;
                     log.warn("{}. Комиссия ТС включена в сумму сделки {}, т.к. они оба в одной валюте: {}",
                             msg, tradeId, valueCurrency);
-                } else if(brokerCommissionCurrency.equals(valueCurrency)) {
+                } else if (brokerCommissionCurrency.equals(valueCurrency)) {
                     value = value.subtract(brokerCommission);
                     commission = marketCommission;
                     commissionCurrency = marketCommissionCurrency;
@@ -105,11 +107,14 @@ public class SecurityTransactionTable extends SingleAbstractReportTable<Security
                 }
             }
         }
+        String isin = row.getStringCellValue(ISIN);
+        int securityId = declareStockOrBond(isin, null, getReport().getSecurityRegistrar()); // TODO  set .name() also
+
         return SecurityTransaction.builder()
                 .timestamp(timestamp)
                 .tradeId(tradeId)
                 .portfolio(getReport().getPortfolio())
-                .security(row.getStringCellValue(ISIN))
+                .security(securityId)
                 .count((isBuy ? 1 : -1) * row.getIntCellValue(COUNT))
                 .value(value)
                 .accruedInterest((accruedInterest.abs().compareTo(minValue) >= 0) ? accruedInterest : BigDecimal.ZERO)
@@ -131,7 +136,7 @@ public class SecurityTransactionTable extends SingleAbstractReportTable<Security
     private String getCurrency(TableRow row, TableColumnDescription currencyColumn,
                                BigDecimal commission, String defaultCurrency) {
         return Optional.ofNullable(
-                row.getStringCellValueOrDefault(currencyColumn, null))
+                        row.getStringCellValueOrDefault(currencyColumn, null))
                 .or(() -> (commission.abs().compareTo(minValue) < 0) ?
                         Optional.ofNullable(defaultCurrency) :
                         Optional.empty())
@@ -170,7 +175,8 @@ public class SecurityTransactionTable extends SingleAbstractReportTable<Security
 
         @Getter
         private final TableColumn column;
-        TransactionTableHeader(String ... words) {
+
+        TransactionTableHeader(String... words) {
             this.column = TableColumnImpl.of(words);
         }
 

@@ -25,6 +25,7 @@ import org.spacious_team.table_wrapper.api.TableCell;
 import org.spacious_team.table_wrapper.api.TableCellAddress;
 import org.spacious_team.table_wrapper.excel.ExcelSheet;
 import ru.investbook.parser.AbstractExcelBrokerReport;
+import ru.investbook.parser.SecurityRegistrar;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,6 +36,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import static java.util.Objects.requireNonNull;
+
 @EqualsAndHashCode(callSuper = true)
 public class UralsibBrokerReport extends AbstractExcelBrokerReport {
     // "УРАЛСИБ Брокер" или "УРАЛСИБ Кэпитал - Финансовые услуги" (старый формат 2018 г)
@@ -43,9 +46,10 @@ public class UralsibBrokerReport extends AbstractExcelBrokerReport {
     private static final String REPORT_DATE_MARKER = "за период";
     private final Workbook book;
 
-    public UralsibBrokerReport(ZipInputStream zis) {
+    public UralsibBrokerReport(ZipInputStream zis, SecurityRegistrar securityRegistrar) {
+        super(securityRegistrar);
         try {
-            ZipEntry zipEntry = zis.getNextEntry();
+            ZipEntry zipEntry = requireNonNull(zis.getNextEntry());
             Path path = Paths.get(zipEntry.getName());
             this.book = getWorkBook(path.getFileName().toString(), zis);
             ReportPage reportPage = new ExcelSheet(book.getSheetAt(0));
@@ -59,7 +63,8 @@ public class UralsibBrokerReport extends AbstractExcelBrokerReport {
         }
     }
 
-    public UralsibBrokerReport(String excelFileName, InputStream is) {
+    public UralsibBrokerReport(String excelFileName, InputStream is, SecurityRegistrar securityRegistrar) {
+        super(securityRegistrar);
         this.book = getWorkBook(excelFileName, is);
         ReportPage reportPage = new ExcelSheet(book.getSheetAt(0));
         Path path = Paths.get(excelFileName);
@@ -80,7 +85,7 @@ public class UralsibBrokerReport extends AbstractExcelBrokerReport {
 
     private static String getPortfolio(ReportPage reportPage) {
         try {
-            TableCellAddress address = reportPage.find(PORTFOLIO_MARKER);
+            TableCellAddress address = reportPage.findByPrefix(PORTFOLIO_MARKER);
             for (TableCell cell : reportPage.getRow(address.getRow())) {
                 if (cell != null && cell.getColumnIndex() > address.getColumn()) {
                     Object value = cell.getValue();

@@ -20,52 +20,53 @@ package ru.investbook.service;
 
 import lombok.RequiredArgsConstructor;
 import org.spacious_team.broker.pojo.CashFlowType;
-import org.spacious_team.broker.pojo.PortfolioProperty;
-import org.spacious_team.broker.pojo.PortfolioPropertyType;
 import org.spacious_team.broker.pojo.Security;
 import org.spacious_team.broker.pojo.SecurityQuote;
-import org.spacious_team.broker.pojo.SecurityType;
 import org.spacious_team.broker.pojo.Transaction;
 import org.springframework.stereotype.Service;
-import ru.investbook.converter.PortfolioPropertyConverter;
 import ru.investbook.converter.SecurityQuoteConverter;
-import ru.investbook.entity.PortfolioPropertyEntity;
 import ru.investbook.entity.SecurityEventCashFlowEntity;
+import ru.investbook.entity.TransactionEntity;
 import ru.investbook.report.ClosedPosition;
 import ru.investbook.report.FifoPositions;
 import ru.investbook.report.ForeignExchangeRateService;
 import ru.investbook.report.OpenedPosition;
 import ru.investbook.report.ViewFilter;
-import ru.investbook.repository.PortfolioPropertyRepository;
 import ru.investbook.repository.SecurityEventCashFlowRepository;
 import ru.investbook.repository.SecurityQuoteRepository;
+import ru.investbook.repository.SecurityRepository;
 import ru.investbook.repository.TransactionCashFlowRepository;
+import ru.investbook.repository.TransactionRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-import static org.spacious_team.broker.pojo.SecurityType.*;
+import static java.lang.Math.signum;
+import static org.spacious_team.broker.pojo.SecurityType.CURRENCY_PAIR;
 import static org.springframework.util.StringUtils.hasLength;
 
 @Service
 @RequiredArgsConstructor
 public class SecurityProfitServiceImpl implements SecurityProfitService {
 
+    private final ZoneId zoneId = ZoneId.systemDefault();
+    private final Set<Integer> priceAndAccruedInterestTypes = Set.of(CashFlowType.PRICE.getId(), CashFlowType.ACCRUED_INTEREST.getId());
+    private final SecurityRepository securityRepository;
+    private final TransactionRepository transactionRepository;
     private final TransactionCashFlowRepository transactionCashFlowRepository;
     private final SecurityEventCashFlowRepository securityEventCashFlowRepository;
     private final SecurityQuoteRepository securityQuoteRepository;
     private final SecurityQuoteConverter securityQuoteConverter;
-    private final PortfolioPropertyRepository portfolioPropertyRepository;
-    private final PortfolioPropertyConverter portfolioPropertyConverter;
     private final ForeignExchangeRateService foreignExchangeRateService;
 
     @Override
@@ -84,8 +85,7 @@ public class SecurityProfitServiceImpl implements SecurityProfitService {
 
     @Override
     public BigDecimal getGrossProfit(Collection<String> portfolios, Security security, FifoPositions positions, String toCurrency) {
-        SecurityType securityType = getSecurityType(security);
-        return switch (securityType) {
+        return switch (security.getType()) {
             case STOCK, BOND, STOCK_OR_BOND, ASSET -> getPurchaseCost(security, positions, toCurrency)
                     .add(getPurchaseAccruedInterest(security, positions, toCurrency));
             case DERIVATIVE -> sumPaymentsForType(portfolios, security, CashFlowType.DERIVATIVE_PROFIT, toCurrency);
@@ -95,8 +95,7 @@ public class SecurityProfitServiceImpl implements SecurityProfitService {
 
     @Override
     public BigDecimal getPurchaseCost(Security security, FifoPositions positions, String toCurrency) {
-        SecurityType securityType = getSecurityType(security);
-        return switch (securityType) {
+        return switch (security.getType()) {
             case STOCK, BOND, STOCK_OR_BOND, ASSET -> getStockOrBondPurchaseCost(positions, toCurrency);
             case DERIVATIVE -> getTotal(positions.getTransactions(), CashFlowType.DERIVATIVE_PRICE, toCurrency);
             case CURRENCY_PAIR -> getTotal(positions.getTransactions(), CashFlowType.PRICE, toCurrency);
@@ -105,28 +104,34 @@ public class SecurityProfitServiceImpl implements SecurityProfitService {
 
     /**
      * Разница цен продаж и покупок. Не учитывается цена покупки, если ЦБ выведена со счета, не учитывается цена
-     * продажи, если ЦБ введена на счет
+     * продажи, если ЦБ введена на счет (исключение - ввод/вывод бумаг в рамках сплита акции,
+     * в этом случае цены открытия позиции учитываются).
      */
     private BigDecimal getStockOrBondPurchaseCost(FifoPositions positions, String toCurrency) {
         BigDecimal purchaseCost = positions.getOpenedPositions()
                 .stream()
                 .map(openPosition -> getTransactionValue(openPosition.getOpenTransaction(), CashFlowType.PRICE, toCurrency)
-                        .map(value -> value.multiply(getOpenAmountMultiplier(openPosition))))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
+                        .map(value -> getOpenAmount(value, openPosition)))
+                .flatMap(Optional::stream)
                 .reduce(BigDecimal.ZERO, BigDecimal::add); // если ценная бумага не вводилась на счет, а была куплена (есть цена покупки)
         for (ClosedPosition closedPosition : positions.getClosedPositions()) {
-            BigDecimal openPrice = getTransactionValue(closedPosition.getOpenTransaction(), CashFlowType.PRICE, toCurrency)
-                    .map(value -> value.multiply(getOpenAmountMultiplier(closedPosition)))
+            BigDecimal openAmount = getTransactionValue(closedPosition.getOpenTransaction(), CashFlowType.PRICE, toCurrency)
+                    .map(value -> getOpenAmount(value, closedPosition))
                     .orElse(null);
-            BigDecimal closePrice = getTransactionValue(closedPosition.getCloseTransaction(), CashFlowType.PRICE, toCurrency)
-                    .map(value -> value.multiply(getClosedAmountMultiplier(closedPosition)))
-                    // redemption closing price will be taken into account later
-                    .orElseGet(() -> (closedPosition.getClosingEvent() == CashFlowType.REDEMPTION) ? BigDecimal.ZERO : null);
-            if (openPrice != null && closePrice != null) {
-                // если ценная бумага не вводилась и не выводилась со счета, а была куплена и продана
+            BigDecimal closeAmount = getTransactionValue(closedPosition.getCloseTransaction(), CashFlowType.PRICE, toCurrency)
+                    .map(value -> getClosedAmount(value, closedPosition))
+                    .orElse(null);
+            if (openAmount != null && closeAmount != null) {
+                // Если ценная бумага не вводилась и не выводилась со счета, а была куплена и продана
                 // (есть цены покупки и продажи)
-                purchaseCost = purchaseCost.add(openPrice).add(closePrice);
+                purchaseCost = purchaseCost.add(openAmount).add(closeAmount);
+            } else if (openAmount != null && closedPosition.getClosingEvent() == CashFlowType.REDEMPTION) {
+                // Событие погашения не имеет цену закрытия (нет события CashFlowType.PRICE), учитываем цену открытия,
+                // цена закрытия будет учтена ниже из объектов 'SecurityEventCashFlow'
+                purchaseCost = purchaseCost.add(openAmount);
+            } else if (openAmount != null && isStockSplit(closedPosition.getCloseTransaction())) {
+                // Сплит акций, акции не выводятся, нужно учитывать цену покупки
+                purchaseCost = purchaseCost.add(openAmount);
             }
         }
         return positions.getRedemptions()
@@ -136,10 +141,26 @@ public class SecurityProfitServiceImpl implements SecurityProfitService {
                 .reduce(purchaseCost, BigDecimal::add);
     }
 
+    private boolean isStockSplit(Transaction transaction) {
+        if (!transactionCashFlowRepository.isDepositOrWithdrawal(transaction.getId())) {
+            return false;
+        }
+        LocalDate transactionDay = LocalDate.ofInstant(transaction.getTimestamp(), zoneId);
+        Collection<TransactionEntity> depositAndWithdrawalDuringTheDay =
+                transactionRepository.findByPortfolioAndSecurityIdAndTimestampBetweenDepositAndWithdrawalTransactions(
+                        transaction.getPortfolio(),
+                        transaction.getSecurity(),
+                        transactionDay.atStartOfDay(zoneId).toInstant(),
+                        transactionDay.atTime(LocalTime.MAX).atZone(zoneId).toInstant());
+        long oppositeDepositOrWithdrawalEventsDuringTheDay = depositAndWithdrawalDuringTheDay.stream()
+                .filter(t -> signum(t.getCount()) != signum(transaction.getCount()))
+                .count();
+        return oppositeDepositOrWithdrawalEventsDuringTheDay > 0;
+    }
+
     @Override
     public BigDecimal getPurchaseAccruedInterest(Security security, FifoPositions positions, String toCurrency) {
-        SecurityType securityType = SecurityType.getSecurityType(security);
-        if (securityType == BOND || securityType == STOCK_OR_BOND) {
+        if (security.getType().isBond()) {
             return getTotal(positions.getTransactions(), CashFlowType.ACCRUED_INTEREST, toCurrency);
         }
         return BigDecimal.ZERO;
@@ -164,24 +185,26 @@ public class SecurityProfitServiceImpl implements SecurityProfitService {
                 .map(entity -> convertToCurrency(entity.getValue(), entity.getCurrency(), toCurrency));
     }
 
-    private BigDecimal getOpenAmountMultiplier(OpenedPosition openedPosition) {
+    private BigDecimal getOpenAmount(BigDecimal openingValue, OpenedPosition openedPosition) {
         int positionCount = Math.abs(openedPosition.getCount());
         int transactionCount = Math.abs(openedPosition.getOpenTransaction().getCount());
         if (positionCount == transactionCount) {
-            return BigDecimal.ONE;
+            return openingValue;
         } else {
-            return BigDecimal.valueOf(positionCount)
+            return openingValue
+                    .multiply(BigDecimal.valueOf(positionCount))
                     .divide(BigDecimal.valueOf(transactionCount), 6, RoundingMode.HALF_UP);
         }
     }
 
-    private BigDecimal getClosedAmountMultiplier(ClosedPosition closedPosition) {
+    private BigDecimal getClosedAmount(BigDecimal closingValue, ClosedPosition closedPosition) {
         int positionCount = Math.abs(closedPosition.getCount());
         int transactionCount = Math.abs(closedPosition.getCloseTransaction().getCount());
         if (positionCount == transactionCount) {
-            return BigDecimal.ONE;
+            return closingValue;
         } else {
-            return BigDecimal.valueOf(positionCount)
+            return closingValue
+                    .multiply(BigDecimal.valueOf(positionCount))
                     .divide(BigDecimal.valueOf(transactionCount), 6, RoundingMode.HALF_UP);
         }
     }
@@ -196,7 +219,7 @@ public class SecurityProfitServiceImpl implements SecurityProfitService {
 
     private List<SecurityEventCashFlowEntity> getSecurityEventCashFlowEntities(Collection<String> portfolios,
                                                                                Security security,
-                                                                              CashFlowType cashFlowType) {
+                                                                               CashFlowType cashFlowType) {
         return portfolios.isEmpty() ?
                 securityEventCashFlowRepository
                         .findBySecurityIdAndCashFlowTypeIdAndTimestampBetweenOrderByTimestampAsc(
@@ -215,8 +238,9 @@ public class SecurityProfitServiceImpl implements SecurityProfitService {
 
     @Override
     public SecurityQuote getSecurityQuote(Security security, String toCurrency, Instant to) {
-        if (getSecurityType(security) == CURRENCY_PAIR) {
-            String baseCurrency = getCurrencyPair(security.getId()).substring(0, 3);
+        if (security.getType() == CURRENCY_PAIR) {
+            String currencyPair = securityRepository.findCurrencyPair(security.getId()).orElseThrow();
+            String baseCurrency = currencyPair.substring(0, 3);
             LocalDate toDate = LocalDate.ofInstant(to, ZoneId.systemDefault());
             BigDecimal lastPrice = toDate.isBefore(LocalDate.now()) ?
                     foreignExchangeRateService.getExchangeRateOrDefault(baseCurrency, toCurrency, toDate) :
@@ -231,7 +255,7 @@ public class SecurityProfitServiceImpl implements SecurityProfitService {
         return securityQuoteRepository
                 .findFirstBySecurityIdAndTimestampLessThanOrderByTimestampDesc(security.getId(), to)
                 .map(securityQuoteConverter::fromEntity)
-                .map(_quote -> foreignExchangeRateService.convertQuoteToCurrency(_quote, toCurrency))
+                .map(_quote -> foreignExchangeRateService.convertQuoteToCurrency(_quote, toCurrency, security.getType()))
                 .map(_quote -> hasLength(_quote.getCurrency()) ? _quote : _quote.toBuilder()
                         .currency(toCurrency) // Не известно точно в какой валюте котируется инструмент,
                         .build())             // делаем предположение, что в валюте сделки
@@ -239,22 +263,17 @@ public class SecurityProfitServiceImpl implements SecurityProfitService {
     }
 
     @Override
-    public Collection<PortfolioProperty> getPortfolioCash(Collection<String> portfolios, Instant atInstant) {
-        List<PortfolioPropertyEntity> entities = portfolios.isEmpty() ?
-                portfolioPropertyRepository
-                        .findDistinctOnPortfolioIdByPropertyAndTimestampBetweenOrderByTimestampDesc(
-                                PortfolioPropertyType.CASH.name(),
-                                Instant.ofEpochSecond(0),
-                                atInstant) :
-                portfolioPropertyRepository
-                        .findDistinctOnPortfolioIdByPortfolioIdInAndPropertyAndTimestampBetweenOrderByTimestampDesc(
-                                portfolios,
-                                PortfolioPropertyType.CASH.name(),
-                                Instant.ofEpochSecond(0),
-                                atInstant);
-        return entities.stream()
-                .map(portfolioPropertyConverter::fromEntity)
-                .collect(Collectors.toList());
+    public Optional<BigDecimal> getSecurityQuoteFromLastTransaction(Security security, String toCurrency) {
+        return transactionRepository.findFirstBySecurityIdOrderByTimestampDesc(security.getId())
+                .map(t -> transactionCashFlowRepository
+                        .findByTransactionIdAndCashFlowTypeIn(t.getId(), priceAndAccruedInterestTypes)
+                        .stream()
+                        .map(cashFlow -> cashFlow.getValue()
+                                .divide(BigDecimal.valueOf(t.getCount()), 2, RoundingMode.HALF_UP)
+                                .multiply(foreignExchangeRateService.getExchangeRate(cashFlow.getCurrency(), toCurrency))
+                                .abs())
+                        .reduce(BigDecimal.ZERO, BigDecimal::add))
+                .map(value -> Objects.equals(value, BigDecimal.ZERO) ? null : value);
     }
 
     private BigDecimal convertToCurrency(BigDecimal value, String fromCurrency, String toCurrency) {

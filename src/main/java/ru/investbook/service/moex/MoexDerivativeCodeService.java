@@ -47,9 +47,15 @@ public class MoexDerivativeCodeService {
             {"MX", "MIX"},  // Индекс МосБиржи
             {"MM", "MXI"},  // Индекс МосБиржи (мини)
             {"RI", "RTS"},  // Индекс РТС
+            {"RM", "RTSM"}, // Индекс РТС (мини)
             {"RS", "RTSS"}, // Индекс голубых фишек
             {"4B", "ALSI"}, // Индекс FTSE/JSE Top40
             {"VI", "RVI"},  // Волатильность российского рынка
+            {"HO", "HOME"}, // Индекс московской недвижимости ДомКлик
+            {"OG", "OGI"},  // Индекс МосБиржи нефти и газа
+            {"MA", "MMI"},  // Индекс МосБиржи металлов и добычи
+            {"FN", "FNI"},  // Индекс МосБиржи финансов
+            {"CS", "CNI"},  // Индекс МосБиржи потребительского сектора
             {"AF", "AFLT"}, // ПАО "Аэрофлот" (о.а.)
             {"AL", "ALRS"}, // АК "АЛРОСА" (ПАО) (о.а.)
             {"CH", "CHMF"}, // ПАО "Северсталь" (о.а.)
@@ -79,11 +85,22 @@ public class MoexDerivativeCodeService {
             {"AK", "AFKS"}, // АФК Система (о.а.)
             {"IR", "IRAO"}, // ПАО "Интер РАО ЕЭС" (о.а.)
             {"PO", "POLY"}, // Полиметалл Интернэшнл (о.а.)
+            {"PI", "PIKK"}, // ПИК СЗ (о.а.)
+            {"SE", "SPBE"}, // ПАО "СПБ Биржа"
+            {"RL", "RUAL"}, // МКПАО "Объединённая Компания "РУСАЛ"
+            {"PH", "PHOR"}, // ПАО "ФосАгро"
+            {"DY", "DSKY"}, // ПАО "Детский мир"
+            {"SS", "SMLT"}, // ПАО "Группа компаний "Самолет"
+            {"MC", "MTLR"}, // ПАО "Мечел"
+            {"RE", "RSTI"}, // ПАО "Российские сети"
+            {"SO", "SIBN"}, // ПАО "Газпром нефть"
             {"TI", "TCSI"}, // ГДР ТиСиЭс Груп Холдинг ПиЭлСи
             {"FV", "FIVE"}, // ГДР Икс 5 Ритейл Груп Н.В
             {"ML", "MAIL"}, // ГДР Мэйл.ру Груп Лимитед
             {"OZ", "OZON"}, // АДР Озон Холдингс Пи Эл Си
             {"BW", "GBMW"}, // BMW AG (о.а.)
+            {"BI", "BIDU"}, // АДР Байду Инк
+            {"BA", "BABA"}, // АДР Алибаба Груп Холдинг Лимитед
             {"SF", "SPYF"}, // SPDR S&P 500 ETF Trust
             {"DM", "GDAI"}, // Daimler AG (о.а.)
             {"DB", "GDBK"}, // Deutsche Bank AG (о.а.)
@@ -108,8 +125,11 @@ public class MoexDerivativeCodeService {
             {"CF", "UCHF"}, // курс доллар США – швейцарский франк
             {"JP", "UJPY"}, // курс доллар США – японская йена
             {"TR", "UTRY"}, // курс доллар США – турецкая лира
-            {"IN", "UINR"}, // Курс доллара США к индийской рупии
+            {"IN", "UINR"}, // курс доллара США к индийской рупии
             {"UU", "UUAH"}, // курс доллар США – украинская гривна
+            {"EG", "EGBP"}, // курс евро – фунт стерлингов
+            {"EC", "ECAD"}, // курс евро – канадский доллар
+            {"EJ", "EJPY"}, // курс евро – японская йена
             {"BR", "BR"},   // нефть BRENT
             {"CU", "CU"},   // медь
             {"GD", "GOLD"}, // золото
@@ -154,7 +174,8 @@ public class MoexDerivativeCodeService {
      * @return true for futures in format {@code SiM1}
      */
     public boolean isFuturesCode(String contract) {
-        return contract.length() == 4 &&
+        return contract != null &&
+                contract.length() == 4 &&
                 shortnameToCodes.containsValue(contract.substring(0, 2)) &&
                 getFuturesMonth(contract.charAt(2)) != -1 &&
                 isDigit(contract.charAt(3));
@@ -165,6 +186,7 @@ public class MoexDerivativeCodeService {
      */
     public boolean isFuturesShortname(String contract) {
         try {
+            if (contract == null) return false;
             int dotIdx = contract.length() - 3;
             if (contract.charAt(dotIdx) != '.') {
                 return false;
@@ -196,6 +218,7 @@ public class MoexDerivativeCodeService {
      * @return true for option in format {@code BR10BF0} and {@code BR-10BF0}
      */
     public boolean isOptionCode(String contract) {
+        if (contract == null) return false;
         int length = contract.length();
         if (length > 5) {
             int yearIdx = length;
@@ -217,6 +240,7 @@ public class MoexDerivativeCodeService {
      * and {@code BR-7.16M270616CA 50}
      */
     public boolean isOptionShortname(String contract) {
+        if (contract == null) return false;
         int dashIdx = contract.indexOf('-');
         if (dashIdx == -1) {
             return false;
@@ -251,6 +275,7 @@ public class MoexDerivativeCodeService {
      */
     public Optional<String> getFuturesCode(String contract) {
         try {
+            if (contract == null) return empty();
             int dashIdx = contract.indexOf('-');
             if (dashIdx == -1) {
                 return isFuturesCode(contract) ? Optional.of(contract) : empty();
@@ -296,10 +321,10 @@ public class MoexDerivativeCodeService {
     /**
      * Convert derivative codes before storing to DB if need
      */
-    public String convertDerivativeSecurityId(String securityId) {
-        return isFuturesCode(securityId) ?
-                getFuturesShortname(securityId).orElse(securityId) :
-                securityId;
+    public String convertDerivativeCode(String code) {
+        return isFuturesCode(code) ?
+                getFuturesShortname(code).orElse(code) :
+                code;
     }
 
     /**
