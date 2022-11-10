@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2021  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -33,7 +33,7 @@ public class SecurityDescriptionModel {
      * In "name (isin)" or "contract-name" format
      */
     @NotEmpty
-    private String security = "Наименование (XX0000000000)";
+    private String security = "Наименование (RU0000000000)";
 
     @NotEmpty
     private String sector;

@@ -1,5 +1,12 @@
-![java-version](https://img.shields.io/badge/Java-17-brightgreen?style=flat-square)
-![spring-boot-version](https://img.shields.io/badge/SpringBoot-2.6.3-brightgreen?style=flat-square)
+![java-version](https://img.shields.io/badge/java-18-brightgreen?style=flat-square)
+![spring-boot-version](https://img.shields.io/badge/spring--boot-2.7.4-brightgreen?style=flat-square)
+[![hits-of-code](https://img.shields.io/badge/dynamic/json?style=flat-square&color=lightblue&label=hits-of-code&url=https://hitsofcode.com/github/spacious-team/investbook/json?branch=develop&query=$.count)](https://hitsofcode.com/github/spacious-team/investbook/view?branch=develop)
+![github-closed-pull-requests](https://img.shields.io/github/issues-pr-closed/spacious-team/investbook?style=flat-square&color=brightgreen)
+![github-workflow-status](https://img.shields.io/github/workflow/status/spacious-team/investbook/Publish%20To%20Docker%20Hub?style=flat-square)
+[![github-all-releases](https://img.shields.io/github/downloads/spacious-team/investbook/total?style=flat-square&logo=github&color=lightblue)](https://github.com/spacious-team/investbook/releases/latest)
+[![docker-pulls](https://img.shields.io/docker/pulls/spaciousteam/investbook?style=flat-square&logo=docker&color=lightblue&logoColor=white)](https://hub.docker.com/r/spaciousteam/investbook)
+[![telegram-channel](https://img.shields.io/endpoint?style=flat-square&color=2ca5e0&label=news&url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Finvestbook_official)](https://t.me/investbook_official)
+[![telegram-group](https://img.shields.io/endpoint?style=flat-square&color=2ca5e0&label=chat&url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Finvestbook_support)](https://t.me/investbook_support)
 
 <img src="https://user-images.githubusercontent.com/11336712/85948992-b1d6de00-b95c-11ea-8edc-4d5e7dfc8210.png" width="100%"/>
 
@@ -33,10 +40,10 @@
 
 ![main-page](https://user-images.githubusercontent.com/11336712/128609729-08b5cb5e-9f58-452e-a661-a0258d7fb512.png)
 
-![portfolio-composition](https://user-images.githubusercontent.com/11336712/120564463-a5cc8980-c413-11eb-8326-46efcdc85c23.gif)
+![sectors-pie-chart](https://user-images.githubusercontent.com/11336712/120564463-a5cc8980-c413-11eb-8326-46efcdc85c23.gif)
 
 Все что нужно - это подгружать свежие отчеты брокера или [вручную вводить](src/main/asciidoc/investbook-forms.adoc)
-информацию. При этом вся информация сохраняетя на вашем компьютере, в облако данные не уходят, для работы интернет не требуется.
+информацию. При этом вся информация сохраняется на вашем компьютере, в облако данные не уходят, для работы интернет не требуется.
 
 По каждому счету в отдельности и подводя единый итог по всем счетам, будет доступна следующая информация:
 - [обзор](src/main/asciidoc/portfolio-analysis.adoc) роста активов, рассчитанного по методике S&P 500,
@@ -90,15 +97,16 @@ Investbook в сравнении с [Intelinvest](https://intelinvest.ru) и [Sn
    к брокерскому счету третьим лицам и программному обеспечению с потенциальными ошибками. Например, известно,
    что токены популярного брокера позволяют совершать сделки без вашего участия.
 1. Открытый код - дополнительная гарантия безопасности и уверенности в доступности данных только вам.
-1. Понятный, широко распространенный формат отчёта - Excel таблицы с детальным описанием каждой колонки.
+1. Понятный, широко распространенный формат отчёта - Excel таблицы
+   с [детальным описанием](src/main/asciidoc/index.adoc#описание-отчета-investbook) каждой колонки.
 1. Единый формат представления данных "[Portfolio Open Format](https://github.com/spacious-team/portfolio-open-format)"
    при необходимости позволит безболезненно перенести накопленные данные в другое приложение учета инвестиций.
 
 ### Брокеры
-Приложение анализирует отчеты брокеров Сбербанк (xlsx), ВТБ (xls), Промсвязьбанк (xlsx, xml) и Уралсиб (zip с xls).
-В ближайшее время будет поддерживать Тинькофф, БКС и Финам. Если ваш счет открыт у другого брокера, напишите
-[нам](https://t.me/investbook_support). Также вы можете уже на вашей версии приложения воспользоваться
-[формами](src/main/asciidoc/investbook-forms.adoc) ввода информации или
+Приложение анализирует отчеты брокеров Тинькофф (xlsx), Сбербанк (xlsx), ВТБ (xls), Промсвязьбанк (xlsx, xml)
+и Уралсиб (zip с xls). В ближайшее время будет поддерживать Альфа-Инвестиции, БКС и Финам. Если ваш счет открыт у
+другого брокера, напишите [нам](https://t.me/investbook_support). Также вы можете уже на вашей версии приложения 
+воспользоваться [формами](src/main/asciidoc/investbook-forms.adoc) ввода информации или
 [загрузить](src/main/asciidoc/investbook-input-format.adoc) данные из excel файла. Также поддержку вашего брокера могут 
 предложить сторонние разработчики через функционал расширений. Инструкция для установки расширений доступна для
 операционных систем [windows](docs/install-on-windows.md), [mac](docs/install-on-linux.md) и [linux](docs/install-on-linux.md).
@@ -109,6 +117,7 @@ Investbook в сравнении с [Intelinvest](https://intelinvest.ru) и [Sn
 
 Можете обратиться к более подробной инструкции по установке и работе с приложением для операционных систем
 [windows](docs/install-on-windows.md), [mac](docs/install-on-linux.md) и [linux](docs/install-on-linux.md).
+Investbook также может быть запущен в [docker](docs/run-by-docker.md).
 
 ### Работа с приложением
 Запустите приложение через ярлык на рабочем столе Windows, в браузере перейдите по адресу http://localhost
@@ -124,9 +133,10 @@ Investbook в сравнении с [Intelinvest](https://intelinvest.ru) и [Sn
 После загрузки отчета становится доступным аналитическая выгрузка в формате [excel файла](src/main/asciidoc/index.adoc). 
 
 ### Обновление приложения
-Процесс обновления на Windows не отличается от процесса первоначальной установки.
-Воспользуйтесь инструкцией для операционных систем [windows](docs/install-on-windows.md), [mac](docs/install-on-linux.md)
-и [linux](docs/install-on-linux.md).
+Процесс обновления на Windows не отличается от процесса первоначальной установки. Воспользуйтесь инструкцией
+для операционных систем [windows](docs/install-on-windows.md), [mac](docs/install-on-linux.md) или
+[linux](docs/install-on-linux.md). Или, если Investbook запускался в docker, воспользуйтесь
+[инструкцией](docs/run-by-docker.md).
 
 ### Документация
 Дополнительная информация может быть найдена в [документации](docs/documentation.md), также оффлайн документация всегда

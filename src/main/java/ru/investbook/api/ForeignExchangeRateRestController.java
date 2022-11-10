@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2021  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -69,7 +69,7 @@ public class ForeignExchangeRateRestController extends AbstractRestController<Fo
 
     @GetMapping("/currency-pairs/{currency-pair}")
     @Operation(summary = "Отобразить по валюте",
-            description = "Отображает всю загруженные в БД информацию по обменну курсу одной валюте")
+            description = "Отображает всю загруженные в БД информацию по обменному курсу одной валюте")
     protected List<ForeignExchangeRate> get(@PathVariable("currency-pair")
                                             @Parameter(description = "Валютная пара")
                                                     String currencyPair) {

@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2022  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -36,6 +36,7 @@ import java.util.Collections;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PortfolioOpenFormatV1_1_0 {
+    public static String GENERATED_BY_INVESTBOOK = "investbook";
 
     @NotNull
     @Builder.Default
@@ -45,7 +46,7 @@ public class PortfolioOpenFormatV1_1_0 {
     @NotNull
     @Builder.Default
     @JsonProperty("generated-by")
-    String generatedBy = "investbook";
+    String generatedBy = GENERATED_BY_INVESTBOOK;
 
     @NotNull
     @Builder.Default

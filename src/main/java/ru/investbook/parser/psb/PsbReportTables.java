@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2021  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -60,7 +60,9 @@ public class PsbReportTables extends AbstractReportTables<PsbBrokerReport> {
 
     @Override
     public ReportTable<EventCashFlow> getCashFlowTable() {
-        return new CashFlowTable(report);
+        return WrappingReportTable.of(
+                new CashFlowTable(report),
+                new BrokerFeeTable(report));
     }
 
     @Override

@@ -40,6 +40,14 @@
         a.delete:hover {
             color: #DE5C59;
         }
+
+        a.delete:hover::before {
+            content: "\2620";
+            color: #DE5C59;
+            display: inline-block;
+            position: absolute;
+            margin-left: -20px;
+        }
     </style>
 </head>
 <body>
@@ -108,7 +116,7 @@
         <h2>Инструменты</h2>
         <a href="/security-descriptions/edit-form">Добавить</a><br>
         <a href="/security-descriptions">Посмотреть все инструменты</a><br>
-        <a href="/security-deposit">События депозитория</a><br>
+        <a href="/security-deposit">События депозитария</a><br>
         <br/>
     </div>
 

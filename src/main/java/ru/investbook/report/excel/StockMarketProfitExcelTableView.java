@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2021  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -40,6 +40,7 @@ import java.util.Optional;
 import java.util.function.UnaryOperator;
 
 import static ru.investbook.report.excel.ExcelConditionalFormatHelper.highlightNegativeByRed;
+import static ru.investbook.report.excel.ExcelFormulaHelper.sumAbsValues;
 import static ru.investbook.report.excel.StockMarketProfitExcelTableHeader.*;
 
 @Component
@@ -93,7 +94,7 @@ public class StockMarketProfitExcelTableView extends ExcelTableView {
             totalRow.put(column, "=SUM(" + column.getRange(3, table.size() + 2) + ")");
         }
         totalRow.put(SECURITY, "Итого:");
-        totalRow.put(COUNT, "=SUMPRODUCT(ABS(" + COUNT.getRange(3, table.size() + 2) + "))");
+        totalRow.put(COUNT, sumAbsValues(COUNT, 3, table.size() + 2));
         totalRow.remove(OPEN_DATE);
         totalRow.remove(CLOSE_DATE);
         totalRow.remove(OPEN_PRICE);
@@ -108,7 +109,7 @@ public class StockMarketProfitExcelTableView extends ExcelTableView {
             // Брокеры являются агентами по акциям отечественных бумаг на мосбирже
             sheet.setColumnHidden(TAX_LIABILITY.ordinal(), true); // нет обязательств
         } else {
-            sheet.setZoom(89); // show all columns for 24 inch monitor for securities sheet
+            sheet.setZoom(89); // show all columns for 24-inch monitor for securities sheet
         }
     }
 

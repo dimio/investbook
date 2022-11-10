@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2021  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -106,7 +106,7 @@ public class SecurityEventCashFlowModel {
             case DIVIDEND -> SecurityType.SHARE;
             case ACCRUED_INTEREST, AMORTIZATION, REDEMPTION, COUPON -> SecurityType.BOND;
             case DERIVATIVE_PROFIT, DERIVATIVE_PRICE, DERIVATIVE_QUOTE -> SecurityType.DERIVATIVE;
-            default -> throw new IllegalArgumentException("Can't get security type by security event type: " + type);
+            default -> throw new IllegalArgumentException("Не смог получить тип ЦБ по типу выплаты: " + type);
         };
     }
 }

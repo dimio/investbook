@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2022  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -72,8 +72,8 @@ public class SplitModel {
         return SecurityHelper.getSecurityIsin(security);
     }
 
-    public String getTradeId() {
-        String tradeId = getSecurityIsin() +
+    public String getTradeId(int securityId) {
+        String tradeId = String.valueOf(securityId) +
                 date.toEpochDay() +
                 portfolio.replaceAll(" ", "");
         return tradeId.substring(0, Math.min(32, tradeId.length()));

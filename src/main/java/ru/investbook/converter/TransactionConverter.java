@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2020  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -37,7 +37,7 @@ public class TransactionConverter implements EntityConverter<TransactionEntity, 
         portfolioRepository.findById(transaction.getPortfolio())
                 .orElseThrow(() -> new IllegalArgumentException("В справочнике не найден брокерский счет: " + transaction.getPortfolio()));
         SecurityEntity securityEntity = securityRepository.findById(transaction.getSecurity())
-                .orElseThrow(() -> new IllegalArgumentException("Ценная бумага с заданным ISIN не найдена: " + transaction.getSecurity()));
+                .orElseThrow(() -> new IllegalArgumentException("Ценная бумага с заданным ID не найдена: " + transaction.getSecurity()));
 
         TransactionEntity entity = new TransactionEntity();
         entity.setId(transaction.getId());

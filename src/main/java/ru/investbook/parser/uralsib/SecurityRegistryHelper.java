@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2022  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -22,10 +22,9 @@ import org.spacious_team.broker.pojo.Security;
 import org.spacious_team.broker.pojo.SecurityType;
 import ru.investbook.parser.SecurityRegistrar;
 
-import java.util.regex.Pattern;
+import static ru.investbook.entity.SecurityEntity.isinPattern;
 
 class SecurityRegistryHelper {
-    private static final Pattern isinPattern = Pattern.compile("^[A-Z]{2}[A-Z0-9]{9}[0-9]$");
 
     static int declareStockOrBond(String isin, String name, SecurityRegistrar registrar) {
         Security security = getStockOrBond(isin, name);

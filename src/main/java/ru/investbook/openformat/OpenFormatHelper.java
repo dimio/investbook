@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2022  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,11 +21,10 @@ package ru.investbook.openformat;
 import org.springframework.util.StringUtils;
 
 import java.util.Objects;
-import java.util.regex.Pattern;
+
+import static ru.investbook.entity.SecurityEntity.isinPattern;
 
 public class OpenFormatHelper {
-
-    private static final Pattern isinPattern = Pattern.compile("^[A-Z]{2}[A-Z0-9]{9}[0-9]$");
 
     public static String getValidCurrencyOrNull(String currency) {
         if (currency == null) return null;

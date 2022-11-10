@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2020  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -71,7 +71,7 @@ public class PortfolioAnalysisExcelTableView extends ExcelTableView {
         Collection<String> portfolios = filter.getPortfolios();
         if (showOnlySummary(filter) || isManyPortfolioRequested(portfolios)) {
             Table table = tableFactory.create(portfolios);
-            tables.add(ExcelTable.of("Обзор", table, this));
+            tables.add(ExcelTable.of("Обзор (все)", table, this));
         }
         if (!showOnlySummary(filter)) {
             tables.addAll(super.createExcelTables());
@@ -121,13 +121,15 @@ public class PortfolioAnalysisExcelTableView extends ExcelTableView {
     }
 
     private static String getLastValue(Table table, ExcelTableHeader column) {
-        return "=LOOKUP(2,1/(" + column.getRange(3, table.size() + 2) + "<>0)," + column.getRange(3, table.size() + 2) + ")";
+        // MATCH вернет последнее заполненный индекс колонки, т.к. не найдет значение 1E+99
+        String range = column.getRange(3, table.size() + 2);
+        return "=INDEX(" + range + ",MATCH(1E+99," + range + "))";
     }
 
     @Override
     protected void sheetPreCreate(Sheet sheet, Table table) {
         super.sheetPreCreate(sheet, table);
-        sheet.setZoom(85); // show all columns for 24 inch monitor for securities sheet
+        sheet.setZoom(85); // show all columns for 24-inch monitor for securities sheet
     }
 
     @Override

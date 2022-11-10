@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2021  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -68,7 +68,12 @@ public class VtbForeignExchangeTransactionTable extends SingleInitializableRepor
         if (isBuy) {
             value = value.negate();
         }
-        BigDecimal commission = row.getBigDecimalCellValue(MARKET_COMMISSION)
+        BigDecimal marketComission = row.getBigDecimalCellValueOrDefault(MARKET_COMMISSION, null);
+        if (marketComission == null) {
+            // сделка не завершена в отчете, в следующем отчете она будет корректно распаршена
+            return null;
+        }
+        BigDecimal commission = marketComission
                 .add(row.getBigDecimalCellValue(BROKER_COMMISSION))
                 .negate();
         String instrument = row.getStringCellValue(INSTRUMENT);

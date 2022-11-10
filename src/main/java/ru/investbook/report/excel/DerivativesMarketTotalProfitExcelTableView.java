@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2021  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -56,6 +56,7 @@ import static ru.investbook.report.ForeignExchangeRateService.RUB;
 import static ru.investbook.report.excel.DerivativesMarketTotalProfitExcelTableHeader.*;
 import static ru.investbook.report.excel.ExcelChartPlotHelper.*;
 import static ru.investbook.report.excel.ExcelConditionalFormatHelper.highlightNegativeByRed;
+import static ru.investbook.report.excel.ExcelFormulaHelper.sumAbsValues;
 
 @Component
 @Slf4j
@@ -99,7 +100,7 @@ public class DerivativesMarketTotalProfitExcelTableView extends ExcelTableView {
             if (!currencies.contains(RUB)) currencies.add(RUB);
             for (String currency : currencies) {
                 Table table = tableFactory.create(portfolios, currency);
-                String sheetName = "Портфель трейдера " + currency;
+                String sheetName = "Портфель трейдера (все) " + currency;
                 tables.add(ExcelTable.of(sheetName, table, this));
             }
             return tables;
@@ -148,7 +149,7 @@ public class DerivativesMarketTotalProfitExcelTableView extends ExcelTableView {
             totalRow.put(column, "=SUM(" + column.getRange(3, table.size() + 2) + ")");
         }
         totalRow.put(CONTRACT_GROUP, "Итого:");
-        totalRow.put(COUNT, "=SUMPRODUCT(ABS(" + COUNT.getRange(3, table.size() + 2) + "))");
+        totalRow.put(COUNT, sumAbsValues(COUNT, 3, table.size() + 2));
         totalRow.remove(FIRST_TRANSACTION_DATE);
         totalRow.remove(LAST_TRANSACTION_DATE);
         totalRow.remove(LAST_EVENT_DATE);

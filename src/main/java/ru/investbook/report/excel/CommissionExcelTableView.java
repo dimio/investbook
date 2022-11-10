@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2020  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -78,10 +78,7 @@ public class CommissionExcelTableView extends ExcelTableView {
             }
         }
         for (Cell cell : sheet.getRow(1)) {
-            if (cell == null) continue;
-            if (cell.getColumnIndex() == DATE.ordinal()) {
-                cell.setCellStyle(styles.getTotalTextStyle());
-            } else {
+            if (cell != null) {
                 cell.setCellStyle(styles.getTotalRowStyle());
             }
         }

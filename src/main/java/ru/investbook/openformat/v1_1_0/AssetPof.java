@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2022  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -26,6 +26,7 @@ import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 import lombok.extern.slf4j.Slf4j;
 import org.spacious_team.broker.pojo.Security;
+import org.spacious_team.broker.pojo.SecurityType;
 import org.springframework.lang.Nullable;
 import ru.investbook.entity.SecurityEntity;
 
@@ -76,8 +77,7 @@ class AssetPof {
     Optional<Security> toSecurity() {
         try {
             return Optional.of(Security.builder()
-                    .id(id)
-                    .type(SecurityTypeHelper.getSecurityType(type))
+                    .type(getSecurityType())
                     .ticker(symbol)
                     .name(name)
                     .isin(getValidIsinOrNull(isin))
@@ -88,4 +88,7 @@ class AssetPof {
         }
     }
 
+    SecurityType getSecurityType() {
+        return SecurityTypeHelper.getSecurityType(type);
+    }
 }

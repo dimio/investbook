@@ -1,6 +1,6 @@
 /*
  * InvestBook
- * Copyright (C) 2021  Vitalii Ananev <spacious-team@ya.ru>
+ * Copyright (C) 2022  Spacious Team <spacious-team@ya.ru>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -34,6 +34,9 @@ class ExcelConditionalFormatHelper {
     private static final byte[] borderRed = new byte[]{(byte) 255, (byte) 175, (byte) 175};
 
     static void highlightNegativeByRed(Sheet sheet, ExcelTableHeader column) {
+        if (!(sheet instanceof XSSFSheet)) {
+            return;
+        }
         SheetConditionalFormatting sheetCF = sheet.getSheetConditionalFormatting();
         IndexedColorMap indexedColors = ((XSSFSheet) sheet).getWorkbook()
                 .getStylesSource()
