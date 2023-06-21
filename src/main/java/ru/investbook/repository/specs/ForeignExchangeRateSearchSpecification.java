@@ -18,6 +18,11 @@
 
 package ru.investbook.repository.specs;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.lang.Nullable;
@@ -25,11 +30,6 @@ import ru.investbook.entity.ForeignExchangeRateEntity;
 import ru.investbook.entity.ForeignExchangeRateEntityPk_;
 import ru.investbook.entity.ForeignExchangeRateEntity_;
 
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Path;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -57,7 +57,7 @@ public class ForeignExchangeRateSearchSpecification implements Specification<For
         if (hasText(currency)) {
             Path<String> path = root.get(ForeignExchangeRateEntity_.pk)
                     .get(ForeignExchangeRateEntityPk_.CURRENCY_PAIR);
-            return builder.like(path, currency + "%");
+            return builder.like(builder.lower(path), "%" + currency.toLowerCase() + "%");
         }
         return null;
     }

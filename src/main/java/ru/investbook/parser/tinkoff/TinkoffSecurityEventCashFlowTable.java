@@ -26,6 +26,7 @@ import org.springframework.util.Assert;
 import ru.investbook.parser.SingleAbstractReportTable;
 import ru.investbook.parser.SingleBrokerReport;
 
+import java.time.Instant;
 import java.util.Collection;
 
 import static org.springframework.util.StringUtils.hasLength;
@@ -42,8 +43,8 @@ public class TinkoffSecurityEventCashFlowTable extends SingleAbstractReportTable
         super(report,
                 // Таблица не имеет собственного названия, поэтому ищем предыдущую таблицу,
                 // строки чужой таблицы пропускаются
-                (cell) -> cell.startsWith("2. Операции с денежными средствами"),
-                (cell) -> TinkoffBrokerReport.tablesLastRowPattern.matcher(cell).lookingAt(),
+                cell -> cell.startsWith("2. Операции с денежными средствами"),
+                cell -> TinkoffBrokerReport.tablesLastRowPattern.matcher(cell).lookingAt(),
                 TinkoffCashFlowTable.CashFlowTableHeader.class);
         this.codeAndIsin = codeAndIsin;
     }
@@ -59,22 +60,40 @@ public class TinkoffSecurityEventCashFlowTable extends SingleAbstractReportTable
             return null;
         }
 
-        if (operation.contains("выплата") && operation.contains("дивиденд")) {
+        if (operation.contains("выплата") && operation.contains("дивиденд")) { // Выплата дивидендов
             return getBuilder(row, currency)
                     .eventType(CashFlowType.DIVIDEND)
                     .value(row.getBigDecimalCellValue(DEPOSIT))
                     .build();
-        } else if (operation.contains("выплата") && operation.contains("купон")) {
+        } else if (operation.contains("выплата") && operation.contains("купон")) { // Выплата купонов
             return getBuilder(row, currency)
                     .eventType(CashFlowType.COUPON)
                     .value(row.getBigDecimalCellValue(DEPOSIT))
                     .build();
-        } else if (operation.contains("налог") && operation.contains("дивиденд")) {
+        } else if (operation.contains("амортизация")) { // Частичное погашение облигации (амортизация номинала)
+            Instant timestamp = getReport()
+                    .convertToInstant(row.getStringCellValue(DATE))
+                    .plusSeconds(1); // gh-510
+            return getBuilder(row, currency)
+                    .timestamp(timestamp)
+                    .eventType(CashFlowType.AMORTIZATION)
+                    .value(row.getBigDecimalCellValue(DEPOSIT))
+                    .build();
+        } else if (operation.contains("погашение") && operation.contains("облигации")) { // Погашение облигации
+            Instant timestamp = getReport()
+                    .convertToInstant(row.getStringCellValue(DATE))
+                    .plusSeconds(1); // gh-510
+            return getBuilder(row, currency)
+                    .timestamp(timestamp)
+                    .eventType(CashFlowType.REDEMPTION)
+                    .value(row.getBigDecimalCellValue(DEPOSIT))
+                    .build();
+        } else if (operation.contains("налог") && operation.contains("дивиденд")) { // Налог (дивиденды)
             return getBuilder(row, currency)
                     .eventType(CashFlowType.TAX)
                     .value(row.getBigDecimalCellValue(WITHDRAWAL).negate())
                     .build();
-        } else if (operation.contains("налог") && operation.contains("купон")) { // предположение, нет примера
+        } else if (operation.contains("налог") && operation.contains("купон")) { // Налог (купонный доход)
             return getBuilder(row, currency)
                     .eventType(CashFlowType.TAX)
                     .value(row.getBigDecimalCellValue(WITHDRAWAL).negate())
@@ -94,12 +113,15 @@ public class TinkoffSecurityEventCashFlowTable extends SingleAbstractReportTable
     }
 
     private int getSecurityId(TableRow row) {
+        // "Ford Motor-ао/ 60 шт." or "RU0007661625/ ГАЗПРОМ ао/ 30 шт."
         String description = row.getStringCellValue(DESCRIPTION);
-        String shortName = description.split("/")[0].trim();
+        String[] parts = description.split("/");
+        String shortName = (parts.length < 3) ? parts[0].trim() : parts[1].trim();
         String code = codeAndIsin.getCode(shortName);
+        String isin = (parts.length < 3) ? codeAndIsin.getIsin(code) : parts[0].trim();
         Security security = getSecurity(
                 code,
-                codeAndIsin,
+                isin,
                 shortName,
                 codeAndIsin.getSecurityType(code));
         return declareSecurity(security, getReport().getSecurityRegistrar());
@@ -107,8 +129,10 @@ public class TinkoffSecurityEventCashFlowTable extends SingleAbstractReportTable
 
     private int getCount(TableRow row) {
         String description = row.getStringCellValue(DESCRIPTION);
-        String text = description.split("/")[1].trim();
-        Assert.isTrue(text.endsWith(" шт."), "Ожидается количество бумаг в формате '<Наименование>/ 10 шт.'");
+        int slashPos = description.lastIndexOf('/');
+        Assert.isTrue(slashPos != -1 && description.endsWith(" шт."),
+                "Ожидается количество бумаг в формате '<...>/ 10 шт.'");
+        String text = description.substring(slashPos + 1).trim();
         return Integer.parseInt(text.split("\s+")[0]);
     }
 

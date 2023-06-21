@@ -18,6 +18,8 @@
 
 package ru.investbook.web.forms.controller;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
@@ -36,8 +38,6 @@ import ru.investbook.web.forms.model.PortfolioPropertyTotalAssetsModel;
 import ru.investbook.web.forms.model.filter.PortfolioPropertyFormFilterModel;
 import ru.investbook.web.forms.service.PortfolioPropertyFormsService;
 
-import javax.annotation.PostConstruct;
-import javax.validation.Valid;
 import java.util.Collection;
 import java.util.function.Supplier;
 
@@ -58,6 +58,7 @@ public class PortfolioPropertyController {
     @GetMapping
     public String get(@ModelAttribute("filter") PortfolioPropertyFormFilterModel filter, Model model) {
         Page<PortfolioPropertyModel> page = portfolioPropertyFormsService.getPage(filter);
+        portfolios = ControllerHelper.getPortfolios(portfolioRepository); // update portfolios for filter
         model.addAttribute("page", new PageableWrapperModel<>(page));
         model.addAttribute("portfolios", portfolios);
         return "portfolio-properties/table";

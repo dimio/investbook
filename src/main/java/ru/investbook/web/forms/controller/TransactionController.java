@@ -18,6 +18,8 @@
 
 package ru.investbook.web.forms.controller;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
@@ -37,8 +39,6 @@ import ru.investbook.web.forms.model.TransactionModel;
 import ru.investbook.web.forms.model.filter.TransactionFormFilterModel;
 import ru.investbook.web.forms.service.TransactionFormsService;
 
-import javax.annotation.PostConstruct;
-import javax.validation.Valid;
 import java.util.Collection;
 
 @Controller
@@ -46,7 +46,7 @@ import java.util.Collection;
 @RequiredArgsConstructor
 public class TransactionController {
     protected final TransactionFormsService transactionFormsService;
-    private final PortfolioRepository portfolioRepository;
+    protected final PortfolioRepository portfolioRepository;
     private final SecurityRepository securityRepository;
     protected final FifoPositionsFactory fifoPositionsFactory;
     protected volatile Collection<String> securities;
@@ -62,6 +62,7 @@ public class TransactionController {
     @GetMapping
     public String get(@ModelAttribute("filter") TransactionFormFilterModel filter, Model model) {
         Page<TransactionModel> data = transactionFormsService.getTransactionPage(filter);
+        portfolios = ControllerHelper.getPortfolios(portfolioRepository); // update portfolios for filter
         model.addAttribute("page", new PageableWrapperModel<>(data));
         model.addAttribute("portfolios", portfolios);
 

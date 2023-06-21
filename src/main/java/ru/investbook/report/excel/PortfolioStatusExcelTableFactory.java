@@ -240,11 +240,9 @@ public class PortfolioStatusExcelTableFactory implements TableFactory {
                         (securityType.isBond() ? ("+" + AMORTIZATION.getCellAddr()) : ""));
             } else {
                 row.put(AVERAGE_PRICE, securityProfitService.getPurchaseCost(security, positions, toCurrency)
-                        .abs()
-                        .divide(BigDecimal.valueOf(Math.max(1, Math.abs(count))), 6, RoundingMode.CEILING));
+                        .divide(BigDecimal.valueOf(-count), 6, RoundingMode.CEILING));
                 row.put(AVERAGE_ACCRUED_INTEREST, securityProfitService.getPurchaseAccruedInterest(security, positions, toCurrency)
-                        .abs()
-                        .divide(BigDecimal.valueOf(Math.max(1, Math.abs(count))), 6, RoundingMode.CEILING));
+                        .divide(BigDecimal.valueOf(-count), 6, RoundingMode.CEILING));
 
                 quote = securityProfitService.getSecurityQuote(security, toCurrency, filter.getToDate());
 
@@ -259,7 +257,7 @@ public class PortfolioStatusExcelTableFactory implements TableFactory {
                     row.put(GROSS_PROFIT, STOCK_OR_BOND_GROSS_PROFIT_FORMULA);
                 }
             }
-            row.put(COMMISSION, securityProfitService.getTotal(positions.getTransactions(), CashFlowType.COMMISSION, toCurrency).abs());
+            row.put(COMMISSION, securityProfitService.getTotal(positions.getTransactions(), CashFlowType.FEE, toCurrency).abs());
             if (securityType.isBond()) {
                 row.put(COUPON, securityProfitService.sumPaymentsForType(portfolios, security, CashFlowType.COUPON, toCurrency));
                 row.put(AMORTIZATION, securityProfitService.sumPaymentsForType(portfolios, security, CashFlowType.AMORTIZATION, toCurrency));

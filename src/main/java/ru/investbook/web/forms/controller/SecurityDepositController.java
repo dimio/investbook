@@ -18,6 +18,7 @@
 
 package ru.investbook.web.forms.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -30,13 +31,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ru.investbook.report.FifoPositionsFactory;
 import ru.investbook.repository.PortfolioRepository;
 import ru.investbook.repository.SecurityRepository;
+import ru.investbook.web.ControllerHelper;
 import ru.investbook.web.forms.model.PageableWrapperModel;
 import ru.investbook.web.forms.model.SplitModel;
 import ru.investbook.web.forms.model.TransactionModel;
 import ru.investbook.web.forms.model.filter.TransactionFormFilterModel;
 import ru.investbook.web.forms.service.TransactionFormsService;
-
-import javax.validation.Valid;
 
 @Controller
 @RequestMapping("/security-deposit")
@@ -51,6 +51,7 @@ public class SecurityDepositController extends TransactionController {
     @GetMapping
     public String get(@ModelAttribute("filter") TransactionFormFilterModel filter, Model model) {
         Page<TransactionModel> page = transactionFormsService.getSecurityDepositPage(filter);
+        portfolios = ControllerHelper.getPortfolios(portfolioRepository); // update portfolios for filter
         model.addAttribute("page", new PageableWrapperModel<>(page));
         model.addAttribute("portfolios", portfolios);
 
